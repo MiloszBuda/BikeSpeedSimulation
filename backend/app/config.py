@@ -11,6 +11,7 @@ class Settings:
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
+        "https://miloszbuda.github.io",
         "https://*.github.io",
         "*",
     ]

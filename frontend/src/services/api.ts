@@ -4,14 +4,25 @@ import {
   WhatIfSimulationResponse,
 } from '../types/simulation';
 
-const DEFAULT_API_URL = 'https://bikespeedsimulation.onrender.com';
-const API_BASE = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
+export const DEFAULT_API_URL = 'https://bikespeedsimulation.onrender.com';
+export const API_BASE = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
 
-export async function checkBackendHealth(): Promise<boolean> {
+export async function checkBackendHealth(timeoutMs: number = 10000): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    const res = await fetch(`${API_BASE}/health`, { method: 'GET', signal: AbortSignal.timeout(6000) });
+    const res = await fetch(`${API_BASE}/health`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
     return res.ok;
-  } catch {
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn(`[Backend Health Check (${API_BASE})] error:`, err);
     return false;
   }
 }

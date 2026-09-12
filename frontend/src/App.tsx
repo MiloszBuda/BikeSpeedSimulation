@@ -25,6 +25,7 @@ import {
 
 export const App: React.FC = () => {
   const [isBackendOnline, setIsBackendOnline] = useState<boolean>(false);
+  const [isCheckingBackend, setIsCheckingBackend] = useState<boolean>(true);
   const [activeFile, setActiveFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string>('Trasa demonstracyjna (12 km loop)');
   const [isProcessingFile, setIsProcessingFile] = useState<boolean>(false);
@@ -54,11 +55,50 @@ export const App: React.FC = () => {
     eta: 0.97,
   });
 
-  // Check backend health on mount
+  // Manual retry handler for header button
+  const handleRetryBackend = useCallback(async () => {
+    setIsCheckingBackend(true);
+    const online = await checkBackendHealth(15000);
+    setIsBackendOnline(online);
+    setIsCheckingBackend(false);
+    if (online) {
+      setFileError(null);
+    }
+  }, []);
+
+  // Check backend health on mount with progressive retries for Render cold starts
   useEffect(() => {
-    checkBackendHealth().then((online) => {
+    let isMounted = true;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+
+    const ping = async (isManual = false) => {
+      if (isManual) setIsCheckingBackend(true);
+      const online = await checkBackendHealth(12000);
+      if (!isMounted) return;
       setIsBackendOnline(online);
-    });
+      setIsCheckingBackend(false);
+
+      // Progressive backoff ping to catch Render waking up (free tier cold start takes ~15-25s)
+      if (!online && attempt < 4 && !isManual) {
+        attempt++;
+        const delays = [3000, 6000, 10000, 15000];
+        retryTimer = setTimeout(() => ping(false), delays[attempt - 1] || 15000);
+      }
+    };
+
+    ping(false);
+
+    // Heartbeat check every 25s
+    const interval = setInterval(() => {
+      ping(false);
+    }, 25000);
+
+    return () => {
+      isMounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
+      clearInterval(interval);
+    };
   }, []);
 
   // Handle FIT file upload
@@ -69,53 +109,60 @@ export const App: React.FC = () => {
     setFileError(null);
 
     try {
-      if (isBackendOnline) {
-        // 1. Process FIT with Open-Meteo weather
-        const processed = await processFitFile(file);
-        setProcessData(processed);
+      // 1. Process FIT with Open-Meteo weather
+      const processed = await processFitFile(file);
+      setProcessData(processed);
+      setIsBackendOnline(true);
 
-        // Update default config with weather from this ride
-        const newConfig: SimulationConfig = {
-          ...config,
-          windSpeedMps: processed.weather_summary.avg_wind_speed_cyclist_mps,
-          windDirDeg: processed.weather_summary.dominant_wind_dir_deg,
-          zeroWind: false,
-          windScale: 1.0,
-        };
-        setConfig(newConfig);
+      // Update default config with weather from this ride
+      const newConfig: SimulationConfig = {
+        ...config,
+        windSpeedMps: processed.weather_summary.avg_wind_speed_cyclist_mps,
+        windDirDeg: processed.weather_summary.dominant_wind_dir_deg,
+        zeroWind: false,
+        windScale: 1.0,
+      };
+      setConfig(newConfig);
 
-        // 2. Run initial simulation
-        const sim = await runSimulation(file, {
-          massKg: newConfig.massKg,
-          cda: newConfig.cda,
-          crr: newConfig.crr,
-          drivetrainEfficiency: newConfig.eta,
-          spatialStepM: 5.0,
-          zeroWind: false,
-          windScaleFactor: 1.0,
-          windRotationDeg: 0.0,
-          reverseRoute: false,
-          pacingMode: 'original',
-          calculateEquivalentPower: true,
-        });
-        setSimulationData(sim);
+      // 2. Run initial simulation
+      const sim = await runSimulation(file, {
+        massKg: newConfig.massKg,
+        cda: newConfig.cda,
+        crr: newConfig.crr,
+        drivetrainEfficiency: newConfig.eta,
+        spatialStepM: 5.0,
+        zeroWind: false,
+        windScaleFactor: 1.0,
+        windRotationDeg: 0.0,
+        reverseRoute: false,
+        pacingMode: 'original',
+        calculateEquivalentPower: true,
+      });
+      setSimulationData(sim);
 
-        // 3. Estimate CdA in background
-        estimateChungCdA(file, {
-          massKg: newConfig.massKg,
-          initialCda: newConfig.cda,
-          initialCrr: newConfig.crr,
-        }).then((chung) => {
-          setChungData(chung);
-          setConfig((prev) => ({ ...prev, cda: chung.cda, crr: chung.crr }));
-        }).catch((err) => console.warn('Chung estimate error:', err));
+      // 3. Estimate CdA in background
+      estimateChungCdA(file, {
+        massKg: newConfig.massKg,
+        initialCda: newConfig.cda,
+        initialCrr: newConfig.crr,
+      }).then((chung) => {
+        setChungData(chung);
+        setConfig((prev) => ({ ...prev, cda: chung.cda, crr: chung.crr }));
+      }).catch((err) => console.warn('Chung estimate error:', err));
 
-      } else {
-        // Offline / GitHub Pages fallback
-        setFileError('Brak połączenia z lokalnym backendem Python. Prezentuję w trybie demonstracyjnym.');
-      }
     } catch (err: any) {
-      setFileError(err.message || 'Wystąpił błąd podczas przetwarzania pliku FIT.');
+      console.error('FIT processing error:', err);
+      const online = await checkBackendHealth(5000);
+      setIsBackendOnline(online);
+      if (!online) {
+        setFileError(
+          'Nie udało się połączyć z backendem Render (https://bikespeedsimulation.onrender.com). ' +
+          'Darmowy serwer Render usypia po 15 min bezczynności — pierwsze wybudzenie trwa ~20 sekund. ' +
+          'Sprawdź status w nagłówku lub kliknij przycisk połączenia i spróbuj ponownie za moment.'
+        );
+      } else {
+        setFileError(err.message || 'Wystąpił błąd podczas przetwarzania pliku FIT.');
+      }
     } finally {
       setIsProcessingFile(false);
     }
@@ -126,7 +173,7 @@ export const App: React.FC = () => {
     setIsSimulating(true);
 
     try {
-      if (activeFile && isBackendOnline) {
+      if (activeFile) {
         // Calculate angle rotation relative to dominant wind
         const baseDir = processData.weather_summary.dominant_wind_dir_deg;
         const rotDeg = (config.windDirDeg - baseDir + 360) % 360;
@@ -148,6 +195,7 @@ export const App: React.FC = () => {
           calculateEquivalentPower: true,
         });
         setSimulationData(res);
+        setIsBackendOnline(true);
       } else {
         const isBaseline =
           !config.zeroWind &&
@@ -254,6 +302,8 @@ export const App: React.FC = () => {
       {/* Top Header */}
       <Header
         isBackendOnline={isBackendOnline}
+        isCheckingBackend={isCheckingBackend}
+        onRetryBackend={handleRetryBackend}
         onLoadDemo={handleLoadDemo}
         onOpenChungModal={() => setIsChungModalOpen(true)}
         hasData={Boolean(processData)}

@@ -160,3 +160,16 @@ async def test_simulation_what_if_endpoint(sample_fit_bytes, sample_weather_api_
         assert result["summary"]["simulated_avg_speed_kmh"] > 0.0
         assert len(result["spatial_points"]) > 0
 
+
+@pytest.mark.asyncio
+async def test_cors_github_pages_origin():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        headers = {
+            "Origin": "https://miloszbuda.github.io",
+            "Access-Control-Request-Method": "POST",
+        }
+        res = await client.options("/api/fit/process", headers=headers)
+        assert res.status_code == 200
+        assert res.headers.get("access-control-allow-origin") == "https://miloszbuda.github.io"
+
+

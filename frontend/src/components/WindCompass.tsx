@@ -256,7 +256,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
       </div>
 
       {/* Preset Cardinal Buttons */}
-      <div className="grid grid-cols-4 gap-1 w-full max-w-[200px] mt-2">
+      <div className="grid grid-cols-4 gap-1.5 w-full max-w-[260px] mt-2">
         {[
           { label: 'N (0°)', deg: 0 },
           { label: 'E (90°)', deg: 90 },
@@ -268,7 +268,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
             type="button"
             disabled={disabled}
             onClick={() => onChange(p.deg)}
-            className={`py-0.5 text-[11px] font-mono rounded border transition-colors ${
+            className={`py-1 px-1 text-[11px] font-mono rounded border transition-colors whitespace-nowrap text-center ${
               Math.abs(angle - p.deg) < 1
                 ? 'bg-teal-600 text-white border-teal-500 font-bold'
                 : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-800'

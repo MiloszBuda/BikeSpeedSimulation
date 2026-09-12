@@ -26,6 +26,24 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
   const isFaster = deltaSeconds > 0;
   const deltaFormatted = simulationSummary ? formatSeconds(deltaSeconds) : '0s';
 
+  const baseTimeSec = fitSummary.duration_s > 0 ? fitSummary.duration_s : (simulationSummary?.baseline_time_s ?? 0);
+  const simTimeSec = isZeroDelta
+    ? baseTimeSec
+    : (simulationSummary?.simulated_time_s ?? baseTimeSec);
+
+  const basePowerW = Math.round(fitSummary.avg_power_w);
+  const eqPowerW = isZeroDelta
+    ? basePowerW
+    : Math.round(simulationSummary?.equivalent_power_w ?? basePowerW);
+  const powerDiff = isZeroDelta ? 0 : eqPowerW - basePowerW;
+
+  const baseSpeedKmh = isZeroDelta
+    ? fitSummary.avg_speed_kmh
+    : (simulationSummary?.baseline_avg_speed_kmh ?? fitSummary.avg_speed_kmh);
+  const simSpeedKmh = isZeroDelta
+    ? fitSummary.avg_speed_kmh
+    : (simulationSummary?.simulated_avg_speed_kmh ?? fitSummary.avg_speed_kmh);
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Delta Czasu Card */}
@@ -63,8 +81,8 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           </span>
         </div>
         <div className="text-[11px] text-slate-400 mt-2 flex justify-between border-t border-slate-800/60 pt-1.5 font-mono">
-          <span>Baza: {formatSeconds(simulationSummary?.baseline_time_s ?? fitSummary.duration_s)}</span>
-          <span>Sym: {formatSeconds(simulationSummary?.simulated_time_s ?? fitSummary.duration_s)}</span>
+          <span>Baza: {formatSeconds(baseTimeSec)}</span>
+          <span>Sym: {formatSeconds(simTimeSec)}</span>
         </div>
       </div>
 
@@ -86,19 +104,14 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-black font-mono text-amber-300">
-            {simulationSummary?.equivalent_power_w
-              ? `${Math.round(simulationSummary.equivalent_power_w)} W`
-              : `${Math.round(fitSummary.avg_power_w)} W`}
+            {eqPowerW} W
           </span>
-          {simulationSummary?.equivalent_power_w && (
-            <span className="text-xs text-slate-400 font-mono">
-              ({(simulationSummary.equivalent_power_w - fitSummary.avg_power_w) >= 0 ? '+' : ''}
-              {Math.round(simulationSummary.equivalent_power_w - fitSummary.avg_power_w)} W)
-            </span>
-          )}
+          <span className="text-xs text-slate-400 font-mono">
+            ({powerDiff >= 0 ? '+' : ''}{powerDiff} W)
+          </span>
         </div>
         <div className="text-[11px] text-slate-400 mt-2 border-t border-slate-800/60 pt-1.5">
-          Moc potrzebna do zachowania czasu bazowego
+          {isZeroDelta ? 'Moc zgodna z bazową z pliku' : 'Moc potrzebna do zachowania czasu bazowego'}
         </div>
       </div>
 
@@ -120,11 +133,11 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-black font-mono text-teal-300">
-            {simulationSummary ? simulationSummary.simulated_avg_speed_kmh.toFixed(1) : fitSummary.avg_speed_kmh.toFixed(1)}
+            {simSpeedKmh.toFixed(1)}
           </span>
           <span className="text-xs text-slate-400">km/h</span>
           <span className="text-xs text-slate-500 font-mono">
-            (baza: {(simulationSummary?.baseline_avg_speed_kmh ?? fitSummary.avg_speed_kmh).toFixed(1)})
+            (baza: {baseSpeedKmh.toFixed(1)})
           </span>
         </div>
         <div className="text-[11px] text-slate-400 mt-2 flex justify-between border-t border-slate-800/60 pt-1.5 font-mono">

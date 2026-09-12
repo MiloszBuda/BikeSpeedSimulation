@@ -134,10 +134,10 @@ class SimulationEngine:
 
         # Check if the user is running the exact baseline scenario
         rot_norm = float(request.wind_rotation_deg) % 360.0
-        is_rot_zero = math.isclose(rot_norm, 0.0, abs_tol=1.0) or math.isclose(rot_norm, 360.0, abs_tol=1.0)
+        is_rot_zero = math.isclose(rot_norm, 0.0, abs_tol=3.0) or math.isclose(rot_norm, 360.0, abs_tol=3.0)
         is_baseline = (
             not request.zero_wind
-            and math.isclose(request.wind_scale_factor, 1.0, rel_tol=0.03)
+            and math.isclose(request.wind_scale_factor, 1.0, rel_tol=0.05)
             and is_rot_zero
             and not request.reverse_route
             and request.pacing_mode == PacingMode.ORIGINAL
@@ -160,7 +160,7 @@ class SimulationEngine:
             delta_t_cum = np.zeros_like(t_base_cum)
             total_sim_time = total_base_time
             time_delta_s = 0.0
-            eq_power = float(np.mean(x_power_base)) if request.calculate_equivalent_power else None
+            eq_power = float(np.mean([p.power_w for p in clean_points])) if request.calculate_equivalent_power else None
         else:
             # 2. What-If scenario: conditions differ from baseline
             # Solve steady-state speeds

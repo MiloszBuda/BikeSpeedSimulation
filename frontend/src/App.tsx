@@ -23,6 +23,11 @@ import {
   demoSimulationResponse,
   demoChungResponse,
 } from './data/demoData';
+import {
+  loadSavedAdvancedParams,
+  saveAdvancedParams,
+  resetAdvancedParams,
+} from './utils/storage';
 
 export const App: React.FC = () => {
   const [isBackendOnline, setIsBackendOnline] = useState<boolean>(false);
@@ -43,7 +48,8 @@ export const App: React.FC = () => {
   // Hover sync state
   const [hoveredSpatialIndex, setHoveredSpatialIndex] = useState<number | null>(null);
 
-  // Simulation controls state
+  // Simulation controls state (with persisted equipment/cyclist physics)
+  const initialParams = loadSavedAdvancedParams();
   const [config, setConfig] = useState<SimulationConfig>({
     zeroWind: false,
     windSpeedMps: demoProcessResponse.weather_summary.avg_wind_speed_cyclist_mps,
@@ -51,11 +57,28 @@ export const App: React.FC = () => {
     windDirDeg: demoProcessResponse.weather_summary.dominant_wind_dir_deg,
     reverseRoute: false,
     pacingMode: 'original',
-    massKg: 78.0,
-    cda: demoChungResponse.cda,
-    crr: demoChungResponse.crr,
-    eta: 0.97,
+    massKg: initialParams.massKg,
+    cda: initialParams.cda,
+    crr: initialParams.crr,
+    eta: initialParams.eta,
   });
+
+  // Handler for config changes that persists advanced params to localStorage
+  const handleConfigChange = useCallback((newConfig: SimulationConfig) => {
+    saveAdvancedParams({
+      massKg: newConfig.massKg,
+      cda: newConfig.cda,
+      crr: newConfig.crr,
+      eta: newConfig.eta,
+    });
+    setConfig(newConfig);
+  }, []);
+
+  // Reset advanced parameters to standard defaults
+  const handleResetAdvancedDefaults = useCallback(() => {
+    const defs = resetAdvancedParams();
+    setConfig((prev) => ({ ...prev, ...defs }));
+  }, []);
 
   // Manual retry handler for header button
   const handleRetryBackend = useCallback(async () => {
@@ -119,17 +142,27 @@ export const App: React.FC = () => {
       setIsBackendOnline(true);
       setIsBlockedByClient(false);
 
-      // Update default config with weather from this ride
+      // Load preserved equipment/rider parameters from localStorage
+      const savedParams = loadSavedAdvancedParams();
+      const baseSpeed = processed.weather_summary.avg_wind_speed_cyclist_mps;
+      const baseDir = processed.weather_summary.dominant_wind_dir_deg;
+
+      // Update config with baseline weather while preserving saved equipment params
       const newConfig: SimulationConfig = {
-        ...config,
-        windSpeedMps: processed.weather_summary.avg_wind_speed_cyclist_mps,
-        windDirDeg: processed.weather_summary.dominant_wind_dir_deg,
         zeroWind: false,
+        windSpeedMps: baseSpeed,
         windScale: 1.0,
+        windDirDeg: baseDir,
+        reverseRoute: false,
+        pacingMode: 'original',
+        massKg: savedParams.massKg,
+        cda: savedParams.cda,
+        crr: savedParams.crr,
+        eta: savedParams.eta,
       };
       setConfig(newConfig);
 
-      // 2. Run initial simulation
+      // 2. Run initial simulation (guaranteed exact baseline: time delta = 0s)
       const sim = await runSimulation(file, {
         massKg: newConfig.massKg,
         cda: newConfig.cda,
@@ -145,14 +178,13 @@ export const App: React.FC = () => {
       });
       setSimulationData(sim);
 
-      // 3. Estimate CdA in background
+      // 3. Estimate CdA in background for modal inspection without wiping custom user settings
       estimateChungCdA(file, {
         massKg: newConfig.massKg,
         initialCda: newConfig.cda,
         initialCrr: newConfig.crr,
       }).then((chung) => {
         setChungData(chung);
-        setConfig((prev) => ({ ...prev, cda: chung.cda, crr: chung.crr }));
       }).catch((err) => console.warn('Chung estimate error:', err));
 
     } catch (err: any) {
@@ -181,6 +213,51 @@ export const App: React.FC = () => {
     }
   };
 
+  // Reset weather to exact baseline and immediately update simulation deltas to 0.0
+  const handleResetWeather = useCallback(async () => {
+    if (!processData) return;
+    const baseSpeed = processData.weather_summary.avg_wind_speed_cyclist_mps;
+    const baseDir = processData.weather_summary.dominant_wind_dir_deg;
+
+    const resetConf: SimulationConfig = {
+      ...config,
+      zeroWind: false,
+      windSpeedMps: baseSpeed,
+      windScale: 1.0,
+      windDirDeg: baseDir,
+      reverseRoute: false,
+      pacingMode: 'original',
+    };
+    setConfig(resetConf);
+
+    if (activeFile) {
+      setIsSimulating(true);
+      try {
+        const sim = await runSimulation(activeFile, {
+          massKg: resetConf.massKg,
+          cda: resetConf.cda,
+          crr: resetConf.crr,
+          drivetrainEfficiency: resetConf.eta,
+          spatialStepM: 5.0,
+          zeroWind: false,
+          windScaleFactor: 1.0,
+          windRotationDeg: 0.0,
+          reverseRoute: false,
+          pacingMode: 'original',
+          calculateEquivalentPower: true,
+        });
+        setSimulationData(sim);
+      } catch (err) {
+        console.error('Failed to reset simulation to baseline:', err);
+      } finally {
+        setIsSimulating(false);
+      }
+    } else {
+      // Demo route baseline reset
+      setSimulationData(demoSimulationResponse);
+    }
+  }, [activeFile, processData, config]);
+
   // Run What-If Simulation
   const handleRunSimulation = useCallback(async () => {
     setIsSimulating(true);
@@ -191,12 +268,13 @@ export const App: React.FC = () => {
         const baseDir = processData.weather_summary.dominant_wind_dir_deg;
         const baseSpeed = processData.weather_summary.avg_wind_speed_cyclist_mps;
         const rotDeg = (config.windDirDeg - baseDir + 360) % 360;
+        const normRot = Math.min(rotDeg, 360 - rotDeg);
 
-        // Detect if user is running baseline weather (within minor slider/compass rounding)
+        // Detect if user is running baseline weather (within minor slider/compass rounding or reset)
         const isBaselineWeather =
           !config.zeroWind &&
-          Math.abs(config.windSpeedMps - baseSpeed) < 0.1 &&
-          (Math.abs(rotDeg) < 1.5 || Math.abs(rotDeg - 360) < 1.5) &&
+          Math.abs(config.windSpeedMps - baseSpeed) < 0.25 &&
+          normRot < 2.5 &&
           !config.reverseRoute &&
           config.pacingMode === 'original';
 
@@ -221,10 +299,12 @@ export const App: React.FC = () => {
         setSimulationData(res);
         setIsBackendOnline(true);
       } else {
+        const rotDiff = Math.abs(config.windDirDeg - demoProcessResponse.weather_summary.dominant_wind_dir_deg);
+        const normRotDiff = Math.min(rotDiff, 360 - rotDiff);
         const isBaseline =
           !config.zeroWind &&
-          Math.abs(config.windSpeedMps - demoProcessResponse.weather_summary.avg_wind_speed_cyclist_mps) < 0.1 &&
-          Math.abs(config.windDirDeg - demoProcessResponse.weather_summary.dominant_wind_dir_deg) < 1.0 &&
+          Math.abs(config.windSpeedMps - demoProcessResponse.weather_summary.avg_wind_speed_cyclist_mps) < 0.25 &&
+          normRotDiff < 2.5 &&
           !config.reverseRoute &&
           config.pacingMode === 'original';
 
@@ -288,7 +368,7 @@ export const App: React.FC = () => {
             equivalent_power_w: Math.round(equivPower),
             pacing_mode: config.pacingMode,
             reverse_route: config.reverseRoute,
-            wind_scenario: config.zeroWind ? 'Zero Wind (Calm)' : `Wind ${config.windSpeedMps} m/s @ ${config.windDirDeg}°`,
+            wind_scenario: config.zeroWind ? 'Zero Wind (Calm)' : `Wind ${config.windSpeedMps.toFixed(1)} m/s @ ${config.windDirDeg}°`,
           },
           spatial_points: updatedPoints,
         });
@@ -307,6 +387,7 @@ export const App: React.FC = () => {
     setProcessData(demoProcessResponse);
     setSimulationData(demoSimulationResponse);
     setChungData(demoChungResponse);
+    const savedParams = loadSavedAdvancedParams();
     setConfig({
       zeroWind: false,
       windSpeedMps: demoProcessResponse.weather_summary.avg_wind_speed_cyclist_mps,
@@ -314,10 +395,10 @@ export const App: React.FC = () => {
       windDirDeg: demoProcessResponse.weather_summary.dominant_wind_dir_deg,
       reverseRoute: false,
       pacingMode: 'original',
-      massKg: 78.0,
-      cda: demoChungResponse.cda,
-      crr: demoChungResponse.crr,
-      eta: 0.97,
+      massKg: savedParams.massKg,
+      cda: savedParams.cda,
+      crr: savedParams.crr,
+      eta: savedParams.eta,
     });
   };
 
@@ -383,11 +464,13 @@ export const App: React.FC = () => {
         {/* Interactive Controls & Route Map Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Simulation Controls (Wind Compass, Sliders, Pacing, Reversal) */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-6 xl:col-span-5">
             <SimulationControls
               config={config}
-              onChange={setConfig}
+              onChange={handleConfigChange}
               onRunSimulation={handleRunSimulation}
+              onResetWeather={handleResetWeather}
+              onResetAdvancedDefaults={handleResetAdvancedDefaults}
               isLoading={isSimulating}
               baselineWindSpeedMps={processData.weather_summary.avg_wind_speed_cyclist_mps}
               baselineWindDirDeg={processData.weather_summary.dominant_wind_dir_deg}
@@ -395,7 +478,7 @@ export const App: React.FC = () => {
           </div>
 
           {/* Interactive Leaflet Route Map */}
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-6 xl:col-span-7">
             {simulationData && (
               <RouteMap
                 spatialPoints={simulationData.spatial_points}
@@ -420,7 +503,10 @@ export const App: React.FC = () => {
         isOpen={isChungModalOpen}
         onClose={() => setIsChungModalOpen(false)}
         chungData={chungData}
-        onApplyCda={(cda, crr) => setConfig((prev) => ({ ...prev, cda, crr }))}
+        onApplyCda={(cda, crr) => {
+          setConfig((prev) => ({ ...prev, cda, crr }));
+          saveAdvancedParams({ cda, crr });
+        }}
       />
 
       {/* Footer */}

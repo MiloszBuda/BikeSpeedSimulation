@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Wind,
   CloudOff,
-  Navigation,
   ArrowRightLeft,
   Sliders,
   Zap,
@@ -10,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
+  Save,
 } from 'lucide-react';
 import { WindCompass } from './WindCompass';
 import { Tooltip } from './Tooltip';
@@ -31,6 +31,8 @@ interface SimulationControlsProps {
   config: SimulationConfig;
   onChange: (newConfig: SimulationConfig) => void;
   onRunSimulation: () => void;
+  onResetWeather?: () => void;
+  onResetAdvancedDefaults?: () => void;
   isLoading: boolean;
   baselineWindSpeedMps?: number;
   baselineWindDirDeg?: number;
@@ -40,6 +42,8 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   config,
   onChange,
   onRunSimulation,
+  onResetWeather,
+  onResetAdvancedDefaults,
   isLoading,
   baselineWindSpeedMps = 4.0,
   baselineWindDirDeg = 90.0,
@@ -50,15 +54,22 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
     onChange({ ...config, ...partial });
   };
 
-  const resetToBaselineWeather = () => {
-    update({
+  const handleResetWeatherClick = () => {
+    const updated: SimulationConfig = {
+      ...config,
       zeroWind: false,
       windSpeedMps: baselineWindSpeedMps,
       windScale: 1.0,
       windDirDeg: baselineWindDirDeg,
       reverseRoute: false,
       pacingMode: 'original',
-    });
+    };
+    onChange(updated);
+    if (onResetWeather) {
+      onResetWeather();
+    } else {
+      onRunSimulation();
+    }
   };
 
   return (
@@ -78,19 +89,19 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         </div>
         <button
           type="button"
-          onClick={resetToBaselineWeather}
-          className="text-xs text-slate-400 hover:text-teal-300 flex items-center gap-1 transition-colors"
-          title="Przywróć dane z prognozy Open-Meteo"
+          onClick={handleResetWeatherClick}
+          className="text-xs text-slate-400 hover:text-teal-300 flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-slate-800"
+          title="Przywróć oryginalną pogodę ze stacji i zresetuj delty do zera"
         >
-          <RotateCcw className="w-3 h-3" />
-          Reset pogody
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Reset pogody</span>
         </button>
       </div>
 
       {/* Main Two-Column Controls Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         {/* Left Column: Interactive Compass */}
-        <div className="flex flex-col items-center justify-center p-3 bg-slate-950/60 rounded-lg border border-slate-800/80">
+        <div className="flex flex-col items-center justify-center p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 min-w-0">
           <WindCompass
             angle={config.windDirDeg}
             onChange={(angle) => update({ windDirDeg: angle })}
@@ -100,19 +111,21 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         </div>
 
         {/* Right Column: Speed, Toggles, and Route Reversal */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 min-w-0">
           {/* Toggle On/Off Zero Wind */}
-          <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-lg border border-slate-800/80">
-            <div className="flex items-center gap-2">
-              {config.zeroWind ? (
-                <CloudOff className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Wind className="w-4 h-4 text-teal-400" />
-              )}
-              <div>
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={`p-2 rounded-lg shrink-0 ${
+                  config.zeroWind ? 'bg-rose-500/15 text-rose-400' : 'bg-teal-500/15 text-teal-400'
+                }`}
+              >
+                {config.zeroWind ? <CloudOff className="w-4 h-4" /> : <Wind className="w-4 h-4" />}
+              </div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-slate-200 block">
-                    Symulacja bezwietrzna (Zero Wind)
+                  <span className="text-xs font-semibold text-slate-200 truncate">
+                    Symulacja bezwietrzna
                   </span>
                   <Tooltip
                     title="Symulacja bezwietrzna (Zero Wind)"
@@ -121,30 +134,34 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                     position="bottom"
                   />
                 </div>
-                <span className="text-[11px] text-slate-400">
-                  {config.zeroWind ? 'Wiatr wyłączony (0 m/s)' : 'Wiatr aktywny'}
+                <span className="text-[11px] text-slate-400 block truncate">
+                  {config.zeroWind ? 'Wyciszenie (0 m/s na trasie)' : 'Wiatr aktywny'}
                 </span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => update({ zeroWind: !config.zeroWind })}
-              className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all shrink-0 active:scale-95 ${
                 config.zeroWind
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
+                  : 'bg-teal-500/20 text-teal-300 border border-teal-500/40 hover:bg-teal-500/30'
               }`}
             >
-              {config.zeroWind ? 'WYŁĄCZONY' : 'WŁĄCZONY'}
+              {config.zeroWind ? 'BEZ WIATRU' : 'Z WIATREM'}
             </button>
           </div>
 
           {/* Wind Speed Slider & Input */}
-          <div className={`p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 transition-opacity ${config.zeroWind ? 'opacity-40 pointer-events-none' : ''}`}>
-            <div className="flex justify-between items-center mb-1.5">
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs font-semibold text-slate-300">
-                  Prędkość wiatru przy kolarzu
+          <div
+            className={`p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 transition-opacity ${
+              config.zeroWind ? 'opacity-40 pointer-events-none' : ''
+            }`}
+          >
+            <div className="flex justify-between items-center gap-2 mb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <label className="text-xs font-semibold text-slate-300 truncate">
+                  Prędkość wiatru
                 </label>
                 <Tooltip
                   title="Prędkość wiatru przy kolarzu"
@@ -153,19 +170,19 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                   position="bottom"
                 />
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <input
                   type="number"
                   min="0"
                   max="25"
-                  step="0.5"
-                  value={config.windSpeedMps}
+                  step="0.1"
+                  value={Number(config.windSpeedMps.toFixed(1))}
                   onChange={(e) => update({ windSpeedMps: parseFloat(e.target.value) || 0 })}
-                  className="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-right font-mono text-teal-300"
+                  className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-right font-mono text-teal-300 font-bold focus:outline-none focus:border-teal-500"
                 />
-                <span className="text-xs text-slate-400">m/s</span>
-                <span className="text-[11px] text-slate-500 font-mono">
-                  ({(config.windSpeedMps * 3.6).toFixed(1)} km/h)
+                <span className="text-xs text-slate-400 font-medium">m/s</span>
+                <span className="text-[11px] text-teal-400/90 font-mono bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  {(config.windSpeedMps * 3.6).toFixed(1)} km/h
                 </span>
               </div>
             </div>
@@ -173,27 +190,33 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
               type="range"
               min="0"
               max="15"
-              step="0.2"
+              step="0.1"
               value={config.windSpeedMps}
               onChange={(e) => update({ windSpeedMps: parseFloat(e.target.value) })}
-              className="w-full accent-teal-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+              className="w-full accent-teal-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
             />
-            <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
-              <span>0 (Cisza)</span>
-              <span>5 m/s (18 km/h)</span>
-              <span>10 m/s (36 km/h)</span>
-              <span>15 m/s (54 km/h)</span>
+            <div className="flex justify-between text-[10px] text-slate-400 mt-1.5 font-mono px-0.5">
+              <span>0 m/s</span>
+              <span>5 m/s</span>
+              <span>10 m/s</span>
+              <span>15 m/s</span>
             </div>
           </div>
 
           {/* Route Reversal Toggle */}
-          <div className="flex items-center justify-between p-2.5 bg-slate-950/60 rounded-lg border border-slate-800/80">
-            <div className="flex items-center gap-2">
-              <ArrowRightLeft className={`w-4 h-4 ${config.reverseRoute ? 'text-amber-400' : 'text-slate-400'}`} />
-              <div>
+          <div className="flex items-center justify-between p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={`p-2 rounded-lg shrink-0 ${
+                  config.reverseRoute ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-400'
+                }`}
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-slate-200 block">
-                    Odwróć trasę („Jazda pod prąd”)
+                  <span className="text-xs font-semibold text-slate-200 truncate">
+                    Odwróć trasę
                   </span>
                   <Tooltip
                     title="Odwróć trasę („Jazda pod prąd”)"
@@ -202,17 +225,17 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                     position="bottom"
                   />
                 </div>
-                <span className="text-[11px] text-slate-400">
-                  {config.reverseRoute ? 'Podjazdy stają się zjazdami (s = -s)' : 'Kierunek zgodny z plikiem'}
+                <span className="text-[11px] text-slate-400 block truncate">
+                  {config.reverseRoute ? 'Podjazdy stają się zjazdami' : 'Zgodnie z zapisem GPS'}
                 </span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => update({ reverseRoute: !config.reverseRoute })}
-              className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all shrink-0 active:scale-95 ${
                 config.reverseRoute
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                   : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
               }`}
             >
@@ -240,21 +263,21 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             {
               id: 'original',
               label: 'Moc z pliku',
-              desc: 'Oryginalna moc per punkt',
+              desc: 'Oryginalny profil watów',
               tooltipTitle: 'Moc z pliku (Original Pacing)',
               tooltipContent: 'Dokładny profil mocy z pliku FIT. Zastosowano wygładzenie okna oraz model bezwładności masy na zjazdach/coasting.',
             },
             {
               id: 'constant_avg',
               label: 'Stała średnia',
-              desc: 'Równy wysiłek całej trasy',
+              desc: 'Równy wysiłek na trasie',
               tooltipTitle: 'Stała średnia moc (Constant Avg)',
               tooltipContent: 'Każdy odcinek pokonywany jest z dokładnie taką samą mocą równą średniej mocy z pliku FIT (tzw. jazda ergometryczna).',
             },
             {
               id: 'adaptive_slope',
               label: 'Adaptacyjny',
-              desc: 'Mniej w dół, więcej pod górę',
+              desc: 'Mniej w dół, więcej w górę',
               tooltipTitle: 'Pacing adaptacyjny (Adaptive Slope)',
               tooltipContent: 'Więcej watów na stromych podjazdach, oszczędzanie energii na zjazdach (przy zachowaniu tej samej średniej mocy całkowitej trasy).',
               tooltipPhysics: 'Fizyka kolarstwa: waty zainwestowane przy małej prędkości pod górę dają znacznie większy zysk czasowy niż te same waty na szybkim zjeździe.',
@@ -286,17 +309,35 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
 
       {/* Collapsible Advanced Cyclist Physics */}
       <div className="border-t border-slate-800 pt-2">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="text-xs text-slate-400 hover:text-slate-200 flex items-center justify-between w-full py-1"
-        >
-          <span className="flex items-center gap-1.5">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 py-1"
+          >
             <Activity className="w-3.5 h-3.5 text-slate-400" />
-            Zaawansowane parametry kolarza i sprzętu (Masa, CdA, Crr, Sprawność)
-          </span>
-          {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
+            <span>Zaawansowane parametry kolarza i sprzętu (Masa, CdA, Crr, Sprawność)</span>
+            {showAdvanced ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+          </button>
+          {showAdvanced && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-emerald-400/90 flex items-center gap-1 bg-emerald-950/40 border border-emerald-800/50 px-2 py-0.5 rounded">
+                <Save className="w-2.5 h-2.5" />
+                <span>Zapisywane w pamięci (localStorage)</span>
+              </span>
+              {onResetAdvancedDefaults && (
+                <button
+                  type="button"
+                  onClick={onResetAdvancedDefaults}
+                  className="text-[10px] text-slate-400 hover:text-slate-200 underline"
+                  title="Przywróć domyślne parametry (78kg, 0.32, 0.004, 0.97)"
+                >
+                  Domyślne
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {showAdvanced && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 p-3 bg-slate-950/80 rounded-lg border border-slate-800">
@@ -312,9 +353,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
               <input
                 type="number"
                 step="0.5"
+                min="35"
+                max="200"
                 value={config.massKg}
                 onChange={(e) => update({ massKg: parseFloat(e.target.value) || 78 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono"
+                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
               />
             </div>
             <div>
@@ -328,10 +371,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
               </div>
               <input
                 type="number"
-                step="0.01"
+                step="0.005"
+                min="0.1"
+                max="0.9"
                 value={config.cda}
                 onChange={(e) => update({ cda: parseFloat(e.target.value) || 0.32 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono"
+                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
               />
             </div>
             <div>
@@ -346,9 +391,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
               <input
                 type="number"
                 step="0.0005"
+                min="0.001"
+                max="0.02"
                 value={config.crr}
                 onChange={(e) => update({ crr: parseFloat(e.target.value) || 0.004 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono"
+                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
               />
             </div>
             <div>
@@ -363,11 +410,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
               <input
                 type="number"
                 step="0.01"
-                min="0.8"
+                min="0.75"
                 max="1.0"
                 value={config.eta}
                 onChange={(e) => update({ eta: parseFloat(e.target.value) || 0.97 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono"
+                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
               />
             </div>
           </div>

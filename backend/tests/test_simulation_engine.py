@@ -174,7 +174,7 @@ def test_simulation_coasting_and_equivalent_power_realistic():
 
 def test_simulation_baseline_produces_exact_zero_delta():
     """Verify that simulating with baseline parameters produces exactly 0.0 delta and identical times."""
-    points = make_test_enriched_track(n_points=60)
+    points = make_test_enriched_track(n_points=60, power_w=240.0)
     req = WhatIfSimulationRequest(
         zero_wind=False,
         wind_scale_factor=1.0,
@@ -188,9 +188,29 @@ def test_simulation_baseline_produces_exact_zero_delta():
 
     assert math.isclose(res.summary.time_delta_s, 0.0, abs_tol=1e-5)
     assert math.isclose(res.summary.simulated_time_s, res.summary.baseline_time_s, abs_tol=1e-5)
+    assert math.isclose(res.summary.equivalent_power_w, 240.0, abs_tol=1e-5)
     for sp in res.spatial_points:
         assert math.isclose(sp.delta_time_s, 0.0, abs_tol=1e-5)
         assert math.isclose(sp.simulated_speed_kmh, sp.baseline_speed_kmh, abs_tol=1e-3)
+
+
+def test_simulation_baseline_resilient_to_minor_angle_and_scale_rounding():
+    """Verify that minor rounding in compass / slider (e.g. 1.5 deg rotation, 1.02x scale) still resolves to baseline 0.0s."""
+    points = make_test_enriched_track(n_points=60, power_w=255.0)
+    req = WhatIfSimulationRequest(
+        zero_wind=False,
+        wind_scale_factor=1.02,
+        wind_rotation_deg=1.8,
+        reverse_route=False,
+        pacing_mode=PacingMode.ORIGINAL,
+        spatial_step_m=5.0,
+        calculate_equivalent_power=True,
+    )
+    res = SimulationEngine.run_simulation(points, req)
+
+    assert math.isclose(res.summary.time_delta_s, 0.0, abs_tol=1e-5)
+    assert math.isclose(res.summary.simulated_time_s, res.summary.baseline_time_s, abs_tol=1e-5)
+    assert math.isclose(res.summary.equivalent_power_w, 255.0, abs_tol=1e-5)
 
 
 def test_simulation_downhill_no_speed_jump():

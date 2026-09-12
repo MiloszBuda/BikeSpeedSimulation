@@ -1,10 +1,10 @@
-# BikeSpeedSimulation 🚴‍♂️💨
+# BikeSpeedSimulation
 
 Zaawansowany symulator prędkości kolarza i model predykcyjny oporów ruchu („What-If Aero Engine”). Pozwala analizować zarejestrowane trasy z plików `.fit`, badać wpływ wiatru atmosferycznego (prędkość, kierunek, profil logarytmiczny Hellmanna), modelować wirtualne wzniesienia metodą Chunga oraz prognozować zysk i stratę czasu przy zmianie warunków pogodowych lub strategii pacingu.
 
 ---
 
-## 🌟 Główne Funkcjonalności
+## Główne Funkcjonalności
 
 1. **Parser telemetrii FIT**:
    - Odczyt plików aktywności `.fit` (moc, prędkość, tętno, kadencja, współrzędne GPS, wysokość).
@@ -25,9 +25,9 @@ Zaawansowany symulator prędkości kolarza i model predykcyjny oporów ruchu (�
    - **Odwrócenie wiatru o 180°** oraz regulacja prędkości wiatru.
    - **Odwrócenie trasy („Jazda pod prąd”)**: odwrócenie kolejności trasy i znaków nachylenia ($s \to -s$).
    - **Modele pacingu**:
-     - *Moc z pliku*: oryginalny profil watów z zachowaniem bezwładności masy.
-     - *Stała średnia*: równy wysiłek na całej trasie.
-     - *Adaptacyjny*: oszczędzanie energii na zjazdach, wyższa moc na podjazdach.
+     - _Moc z pliku_: oryginalny profil watów z zachowaniem bezwładności masy.
+     - _Stała średnia_: równy wysiłek na całej trasie.
+     - _Adaptacyjny_: oszczędzanie energii na zjazdach, wyższa moc na podjazdach.
 5. **Edukacyjne opisy i statystyki (Hover Tooltips)**:
    - Każda metryka i kontrolka posiada interaktywny dymek ze szczegółowym wyjaśnieniem fizycznym (dlaczego pętla pod wiatr zawsze przynosi stratę netto, jak działa bisekcja ekwiwalentu mocy, wzór Hellmanna, itp.).
 6. **Wizualizacja ECharts & Leaflet**:
@@ -36,7 +36,7 @@ Zaawansowany symulator prędkości kolarza i model predykcyjny oporów ruchu (�
 
 ---
 
-## 🚀 Uruchomienie Lokalne
+## Uruchomienie Lokalne
 
 ### 1. Backend (FastAPI + Python 3.12)
 
@@ -51,6 +51,7 @@ uvicorn app.main:app --reload --port 8000
 Backend uruchomi się pod adresem: `http://127.0.0.1:8000`. Dokumentacja Swagger API dostępna jest pod `http://127.0.0.1:8000/docs`.
 
 Uruchomienie testów backendu:
+
 ```pwsh
 .\.venv\Scripts\pytest backend/tests
 ```
@@ -67,7 +68,7 @@ Frontend uruchomi się pod adresem: `http://localhost:3000`.
 
 ---
 
-## 🌐 Wdrożenie na GitHub Pages
+## Wdrożenie na GitHub Pages
 
 Aplikacja jest w pełni przystosowana do działania jako statyczna strona SPA na **GitHub Pages** (wraz z wbudowanym trybem demonstracyjnym trasy 12 km pętli).
 

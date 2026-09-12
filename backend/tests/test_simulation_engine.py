@@ -116,3 +116,58 @@ def test_equivalent_power_solver():
     assert res.summary.equivalent_power_w is not None
     # Facing double headwind, equivalent power to match baseline time MUST be higher than 250W
     assert res.summary.equivalent_power_w > 250.0
+
+
+def test_simulation_coasting_and_equivalent_power_realistic():
+    """Regression test: verify that intermittent coasting (0W) does not cause simulated time or equivalent power to explode."""
+    n_points = 200  # 2 km
+    base_time = datetime(2023, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
+    points: list[EnrichedPoint] = []
+
+    for i in range(n_points):
+        # 15% of points have 0W (coasting)
+        p_w = 0.0 if (i % 7 == 0) else 220.0
+        dist = i * 10.0
+        # loop-like bearing
+        bearing = (i * 360.0 / n_points)
+        dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
+        points.append(
+            EnrichedPoint(
+                time_offset_s=i,
+                timestamp=dt,
+                lat=52.0 + 0.01 * math.cos(math.radians(bearing)),
+                lon=21.0 + 0.01 * math.sin(math.radians(bearing)),
+                elevation_m=100.0,
+                distance_m=dist,
+                speed_mps=8.5,
+                speed_kmh=8.5 * 3.6,
+                power_w=p_w,
+                bearing_deg=bearing,
+                temp_c=20.0,
+                surface_pressure_hpa=1013.25,
+                surface_pressure_pa=101325.0,
+                wind_speed_10m_mps=4.0,
+                wind_speed_cyclist_mps=3.0,
+                wind_direction_deg=90.0,
+                air_density_kg_m3=1.20,
+                yaw_angle_deg=0.0,
+                headwind_comp_mps=0.0,
+                crosswind_comp_mps=3.0,
+                apparent_wind_speed_mps=8.5,
+                apparent_wind_angle_deg=0.0,
+            )
+        )
+
+    req = WhatIfSimulationRequest(
+        pacing_mode=PacingMode.ORIGINAL,
+        spatial_step_m=5.0,
+        calculate_equivalent_power=True,
+    )
+    res = SimulationEngine.run_simulation(points, req)
+
+    # Simulated time should be within 30% of baseline, NOT hours or 3x
+    assert res.summary.simulated_time_s < res.summary.baseline_time_s * 1.3
+    # Equivalent power should be realistic and NOT pegged to 3.5x upper limit (770W)
+    assert res.summary.equivalent_power_w is not None
+    assert 100.0 < res.summary.equivalent_power_w < 300.0
+

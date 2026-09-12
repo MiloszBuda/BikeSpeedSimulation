@@ -110,8 +110,17 @@ class SimulationEngine:
             mean_f = np.mean(factors)
             x_power = (p_avg * (factors / mean_f)) if mean_f > 0 else np.full_like(x_slope, p_avg)
         else:
-            # Original pacing
-            x_power = x_power_base.copy()
+            # Original pacing from file: smooth out momentary 0W cadence drops (gear shifts/pauses)
+            # using a rolling average over ~30m (approx 6 samples for dx=5m)
+            w = min(6, len(x_power_base))
+            if w > 1:
+                kernel = np.ones(w) / float(w)
+                x_power = np.convolve(x_power_base, kernel, mode="same")
+                # Where the rider was truly at a standstill in baseline, keep 0W
+                stopped_mask = x_speed_base < 1.0
+                x_power[stopped_mask] = 0.0
+            else:
+                x_power = x_power_base.copy()
 
         # 4. Wind Scenario Modifications
         if request.zero_wind:
@@ -123,8 +132,8 @@ class SimulationEngine:
             sim_wind_dir = (x_wind_dir + request.wind_rotation_deg) % 360.0
             wind_scenario_desc = f"Scale {request.wind_scale_factor}x, Rotated {request.wind_rotation_deg} deg"
 
-        # 5. Solve simulated speeds
-        v_sim = PhysicsSolver.solve_speed_arbitrary_wind(
+        # 5. Solve simulated speeds (steady-state + kinetic energy continuity)
+        v_sim_raw = PhysicsSolver.solve_speed_arbitrary_wind(
             P=x_power,
             s=x_slope,
             bearing_deg=x_bearing,
@@ -136,6 +145,28 @@ class SimulationEngine:
             rho=x_rho,
             eta=request.drivetrain_efficiency,
         )
+
+        # Apply kinetic continuity forward pass:
+        # Cyclist has mass and cannot instantaneously decelerate to zero when coasting (P=0)
+        v_sim = np.zeros_like(v_sim_raw)
+        v_last = max(v_sim_raw[0], 2.0)
+        m_kg = request.mass_kg
+        g_acc = settings.GRAVITY
+
+        for i in range(len(v_sim_raw)):
+            # Dynamic work done against total resistance over segment dx
+            f_resist = (
+                0.5 * x_rho[i] * request.cda * (v_last**2)
+                + m_kg * g_acc * (request.crr + x_slope[i])
+            )
+            # Kinetic lower bound: v_next^2 = v_prev^2 - 2*dx/m * F_resist
+            v_sq = max(0.25, v_last**2 - (2.0 * dx / m_kg) * f_resist)
+            v_kinetic_floor = math.sqrt(v_sq)
+
+            # Actual speed is the maximum of steady-state pedaling speed and coasting kinetic momentum
+            v_curr = max(float(v_sim_raw[i]), v_kinetic_floor)
+            v_sim[i] = v_curr
+            v_last = v_curr
 
         # Baseline speeds (prevent division by zero)
         v_base_clean = np.maximum(x_speed_base, 0.5)
@@ -232,7 +263,7 @@ class SimulationEngine:
 
         def compute_time(k_factor: float) -> float:
             p_trial = base_power * k_factor
-            v_trial = PhysicsSolver.solve_speed_arbitrary_wind(
+            v_raw = PhysicsSolver.solve_speed_arbitrary_wind(
                 P=p_trial,
                 s=s,
                 bearing_deg=bearing_deg,
@@ -244,8 +275,18 @@ class SimulationEngine:
                 rho=rho,
                 eta=eta,
             )
-            v_trial_clean = np.maximum(v_trial, 0.5)
-            return float(np.sum(dx / v_trial_clean))
+            v_dyn = np.zeros_like(v_raw)
+            v_last = max(v_raw[0], 2.0)
+            g_acc = settings.GRAVITY
+            for i in range(len(v_raw)):
+                f_resist = 0.5 * rho[i] * cda * (v_last**2) + mass_kg * g_acc * (crr + s[i])
+                v_sq = max(0.25, v_last**2 - (2.0 * dx / mass_kg) * f_resist)
+                v_curr = max(float(v_raw[i]), math.sqrt(v_sq))
+                v_dyn[i] = v_curr
+                v_last = v_curr
+
+            v_clean = np.maximum(v_dyn, 0.5)
+            return float(np.sum(dx / v_clean))
 
         # 12 iterations of bisection gives ~0.05% precision
         for _ in range(12):

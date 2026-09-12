@@ -12,6 +12,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { WindCompass } from './WindCompass';
+import { Tooltip } from './Tooltip';
 
 export interface SimulationConfig {
   zeroWind: boolean;
@@ -69,6 +70,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           <h3 className="font-semibold text-slate-100 text-sm tracking-wide">
             Sterowanie wiatrem i symulacją
           </h3>
+          <Tooltip
+            title="Symulacja warunków wiatrowych (What-If)"
+            content="Pozwala badać wpływ zmiany prędkości i kierunku wiatru, odwrócenia trasy oraz strategii pacingu na zysk lub stratę czasu. Model oparty jest na równaniu Chunga i wektorowej analizie wiatru pozornego."
+            position="bottom"
+          />
         </div>
         <button
           type="button"
@@ -104,9 +110,17 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 <Wind className="w-4 h-4 text-teal-400" />
               )}
               <div>
-                <span className="text-xs font-semibold text-slate-200 block">
-                  Symulacja bezwietrzna (Zero Wind)
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-slate-200 block">
+                    Symulacja bezwietrzna (Zero Wind)
+                  </span>
+                  <Tooltip
+                    title="Symulacja bezwietrzna (Zero Wind)"
+                    content="Wyzerowanie prędkości wiatru (0 m/s) na całej trasie. Pokazuje czysty potencjał wydolnościowy i wpływ samego profilu terenu na czas przejazdu."
+                    physicsNote="Eliminuje składową wiatru atmosferycznego. Prędkość wiatru pozornego równa się wówczas dokładnie prędkości kolarza."
+                    position="bottom"
+                  />
+                </div>
                 <span className="text-[11px] text-slate-400">
                   {config.zeroWind ? 'Wiatr wyłączony (0 m/s)' : 'Wiatr aktywny'}
                 </span>
@@ -128,9 +142,17 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           {/* Wind Speed Slider & Input */}
           <div className={`p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 transition-opacity ${config.zeroWind ? 'opacity-40 pointer-events-none' : ''}`}>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="text-xs font-semibold text-slate-300">
-                Prędkość wiatru przy kolarzu
-              </label>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-slate-300">
+                  Prędkość wiatru przy kolarzu
+                </label>
+                <Tooltip
+                  title="Prędkość wiatru przy kolarzu"
+                  content="Prędkość wiatru rzeczywistego w m/s oraz km/h. Możesz wpisać dokładną wartość lub przesunąć suwak."
+                  physicsNote="Prędkość wiatru ze stacji meteo (10 m) jest przeliczana profilem Hellmanna na wysokość kolarza (~1.5 m): v_cyclist = v_10 * (1.5/10)^0.2 ~ 0.68 * v_10."
+                  position="bottom"
+                />
+              </div>
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -169,9 +191,17 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             <div className="flex items-center gap-2">
               <ArrowRightLeft className={`w-4 h-4 ${config.reverseRoute ? 'text-amber-400' : 'text-slate-400'}`} />
               <div>
-                <span className="text-xs font-semibold text-slate-200 block">
-                  Odwróć trasę („Jazda pod prąd”)
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-slate-200 block">
+                    Odwróć trasę („Jazda pod prąd”)
+                  </span>
+                  <Tooltip
+                    title="Odwróć trasę („Jazda pod prąd”)"
+                    content="Odwrócenie kolejności trasy GPS oraz znaków nachylenia terenu (podjazdy stają się zjazdami). Pozwala sprawdzić, jak zmieniłby się czas przy jeździe w przeciwnym kierunku."
+                    physicsNote="Umożliwia analizę taktyczną: czy na danej trasie pętlowej przy obecnym kierunku wiatru bardziej opłaca się jechać zgodnie czy przeciwnie do ruchu wskazówek zegara."
+                    position="bottom"
+                  />
+                </div>
                 <span className="text-[11px] text-slate-400">
                   {config.reverseRoute ? 'Podjazdy stają się zjazdami (s = -s)' : 'Kierunek zgodny z plikiem'}
                 </span>
@@ -194,29 +224,62 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
 
       {/* Pacing Model Selector */}
       <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80">
-        <label className="text-xs font-semibold text-slate-300 mb-2 block flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 mb-2">
           <Zap className="w-3.5 h-3.5 text-amber-400" />
-          Model generowania mocy (Pacing)
-        </label>
+          <label className="text-xs font-semibold text-slate-300 block">
+            Model generowania mocy (Pacing)
+          </label>
+          <Tooltip
+            title="Strategie generowania mocy (Pacing)"
+            content="Wybór sposobu dystrybucji watów wzdłuż trasy w symulacji. Możesz porównać realny profil jazdy z idealnie równym wysiłkiem lub pacingiem adaptacyjnym."
+            position="bottom"
+          />
+        </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { id: 'original', label: 'Moc z pliku', desc: 'Oryginalna moc per punkt' },
-            { id: 'constant_avg', label: 'Stała średnia', desc: 'Równy wysiłek całej trasy' },
-            { id: 'adaptive_slope', label: 'Adaptacyjny', desc: 'Mniej w dół, więcej pod górę' },
+            {
+              id: 'original',
+              label: 'Moc z pliku',
+              desc: 'Oryginalna moc per punkt',
+              tooltipTitle: 'Moc z pliku (Original Pacing)',
+              tooltipContent: 'Dokładny profil mocy z pliku FIT. Zastosowano wygładzenie okna oraz model bezwładności masy na zjazdach/coasting.',
+            },
+            {
+              id: 'constant_avg',
+              label: 'Stała średnia',
+              desc: 'Równy wysiłek całej trasy',
+              tooltipTitle: 'Stała średnia moc (Constant Avg)',
+              tooltipContent: 'Każdy odcinek pokonywany jest z dokładnie taką samą mocą równą średniej mocy z pliku FIT (tzw. jazda ergometryczna).',
+            },
+            {
+              id: 'adaptive_slope',
+              label: 'Adaptacyjny',
+              desc: 'Mniej w dół, więcej pod górę',
+              tooltipTitle: 'Pacing adaptacyjny (Adaptive Slope)',
+              tooltipContent: 'Więcej watów na stromych podjazdach, oszczędzanie energii na zjazdach (przy zachowaniu tej samej średniej mocy całkowitej trasy).',
+              tooltipPhysics: 'Fizyka kolarstwa: waty zainwestowane przy małej prędkości pod górę dają znacznie większy zysk czasowy niż te same waty na szybkim zjeździe.',
+            },
           ].map((mode) => (
-            <button
+            <div
               key={mode.id}
-              type="button"
               onClick={() => update({ pacingMode: mode.id as any })}
-              className={`p-2 rounded border text-left transition-all ${
+              className={`p-2 rounded border text-left cursor-pointer transition-all relative ${
                 config.pacingMode === mode.id
                   ? 'bg-teal-950/70 border-teal-500 text-slate-100 ring-1 ring-teal-500/40'
                   : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800/70'
               }`}
             >
-              <span className="text-xs font-bold block">{mode.label}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold">{mode.label}</span>
+                <Tooltip
+                  title={mode.tooltipTitle}
+                  content={mode.tooltipContent}
+                  physicsNote={mode.tooltipPhysics}
+                  position="top"
+                />
+              </div>
               <span className="text-[10px] text-slate-400 leading-tight block mt-0.5">{mode.desc}</span>
-            </button>
+            </div>
           ))}
         </div>
       </div>
@@ -230,7 +293,7 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         >
           <span className="flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5 text-slate-400" />
-            Zaawansowane parametry kolarza i sprzętu (Masa, CdA, Crr)
+            Zaawansowane parametry kolarza i sprzętu (Masa, CdA, Crr, Sprawność)
           </span>
           {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
@@ -238,7 +301,14 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         {showAdvanced && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 p-3 bg-slate-950/80 rounded-lg border border-slate-800">
             <div>
-              <label className="text-[11px] text-slate-400 block mb-1">Masa zestawu (kg)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] text-slate-400 block">Masa zestawu (kg)</label>
+                <Tooltip
+                  title="Masa całkowita zestawu (kg)"
+                  content="Łączna masa kolarza, roweru, bidonów, kasku, butów i osprzętu. Wpływa bezpośrednio na siłę grawitacji na podjazdach i bezwładność kinetyczną."
+                  position="top"
+                />
+              </div>
               <input
                 type="number"
                 step="0.5"
@@ -248,7 +318,14 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
               />
             </div>
             <div>
-              <label className="text-[11px] text-slate-400 block mb-1">CdA oporu (m²)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] text-slate-400 block">CdA oporu (m²)</label>
+                <Tooltip
+                  title="Współczynnik aerodynamiczny CdA (m²)"
+                  content="Iloczyn współczynnika oporu aerodynamicznego Cd i pola powierzchni czołowej A. Typowe wartości: TT/czasówka: 0.20-0.24, szosa dolny chwyt: 0.28-0.32, chwyt za klamki: 0.33-0.38, gravel/MTB: 0.38-0.45."
+                  position="top"
+                />
+              </div>
               <input
                 type="number"
                 step="0.01"
@@ -258,7 +335,14 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
               />
             </div>
             <div>
-              <label className="text-[11px] text-slate-400 block mb-1">Opór toczenia Crr</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] text-slate-400 block">Opór toczenia Crr</label>
+                <Tooltip
+                  title="Współczynnik oporu toczenia Crr"
+                  content="Opór toczenia opon po asfalcie. Nowoczesne opony szosowe tubeless: ~0.003-0.004, opony treningowe z dętką: ~0.0045-0.0055, gravel: ~0.006-0.008."
+                  position="top"
+                />
+              </div>
               <input
                 type="number"
                 step="0.0005"
@@ -268,7 +352,14 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
               />
             </div>
             <div>
-              <label className="text-[11px] text-slate-400 block mb-1">Sprawność napędu η</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] text-slate-400 block">Sprawność napędu η</label>
+                <Tooltip
+                  title="Sprawność napędu łańcuchowego η"
+                  content="Ułamek energii mechanicznej przekazywanej z korby na tylne koło. Czysty, nasmarowany łańcuch szosowy ma sprawność rzędu 97-98% (0.97 - 0.98)."
+                  position="top"
+                />
+              </div>
               <input
                 type="number"
                 step="0.01"

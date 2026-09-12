@@ -179,8 +179,16 @@ export const App: React.FC = () => {
           };
         });
 
-        const totalSimTime = demoSimulationResponse.summary.baseline_time_s - (config.zeroWind ? 52.0 : -config.windSpeedMps * 6.0);
-        const timeDelta = demoSimulationResponse.summary.baseline_time_s - totalSimTime;
+        const pacingBonusSec =
+          config.pacingMode === 'adaptive_slope' ? 18.0 : config.pacingMode === 'constant_avg' ? -3.0 : 0.0;
+        const windPenaltySec = config.zeroWind ? -52.0 : config.windSpeedMps * 6.5;
+        const timeDelta = -(windPenaltySec - pacingBonusSec); // positive = faster (saved time), negative = slower
+        const totalSimTime = demoSimulationResponse.summary.baseline_time_s - timeDelta;
+
+        const basePower = demoProcessResponse.summary.avg_power_w;
+        const equivPower = config.zeroWind
+          ? Math.max(180, basePower - 18)
+          : basePower + config.windSpeedMps * 6.8;
 
         setSimulationData({
           summary: {
@@ -188,7 +196,7 @@ export const App: React.FC = () => {
             simulated_time_s: totalSimTime,
             time_delta_s: timeDelta,
             simulated_avg_speed_kmh: (demoSimulationResponse.summary.total_distance_m / totalSimTime) * 3.6,
-            equivalent_power_w: config.zeroWind ? 225 : (242 + config.windSpeedMps * 8),
+            equivalent_power_w: Math.round(equivPower),
             pacing_mode: config.pacingMode,
             reverse_route: config.reverseRoute,
             wind_scenario: config.zeroWind ? 'Zero Wind' : `Wind ${config.windSpeedMps} m/s @ ${config.windDirDeg}°`,

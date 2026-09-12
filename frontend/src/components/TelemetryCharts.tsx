@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { SpatialPoint, EnrichedPoint } from '../types/simulation';
+import { Tooltip } from './Tooltip';
 
 interface TelemetryChartsProps {
   spatialPoints: SpatialPoint[];
@@ -60,128 +61,120 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
                 <span>Prędkość symulowana:</span> <b class="font-mono">${vSim} km/h</b>
               </div>
               <div class="flex items-center gap-2 text-amber-400">
-                <span>Moc:</span> <b class="font-mono">${Math.round(p.power_w)} W</b>
+                <span>Moc:</span> <b class="font-mono">${p.power_w.toFixed(0)} W</b>
               </div>
               <div class="flex items-center gap-2 ${p.delta_time_s >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
-                <span>Delta czasu:</span> <b class="font-mono">${delta}</b>
+                <span>Skumulowana delta czasu:</span> <b class="font-mono">${delta}</b>
               </div>
             </div>
           `;
         },
       },
       legend: {
-        data: ['Wysokość terenu (m)', 'Prędkość bazowa (km/h)', 'Prędkość symulowana (km/h)', 'Moc (W)', 'Delta czasu (s)'],
+        data: ['Wysokość (m)', 'Prędkość bazowa (km/h)', 'Prędkość symulowana (km/h)', 'Moc (W)', 'Delta czasu (s)'],
         textStyle: { color: '#94a3b8', fontSize: 11 },
         top: 0,
       },
       grid: [
-        { left: '4%', right: '4%', top: '10%', height: '52%' }, // Main Speed & Elevation
-        { left: '4%', right: '4%', top: '69%', height: '20%' }, // Sub-chart: Power & Time Delta
+        // Top Grid: Elevation & Speeds
+        { left: '4%', right: '4%', top: '6%', height: '52%' },
+        // Bottom Grid: Power & Time Delta
+        { left: '4%', right: '4%', top: '65%', height: '24%' },
       ],
       xAxis: [
         {
           type: 'category',
           data: distancesKm,
           gridIndex: 0,
-          boundaryGap: false,
-          axisLine: { lineStyle: { color: '#334155' } },
           axisLabel: { show: false },
+          axisTick: { show: false },
+          splitLine: { show: false },
         },
         {
           type: 'category',
           data: distancesKm,
           gridIndex: 1,
-          boundaryGap: false,
-          axisLine: { lineStyle: { color: '#334155' } },
-          axisLabel: { color: '#64748b', fontSize: 10, formatter: '{value} km' },
+          axisLabel: {
+            color: '#94a3b8',
+            fontSize: 10,
+            formatter: '{value} km',
+          },
+          splitLine: { show: false },
         },
       ],
       yAxis: [
-        // Grid 0 - Left: Elevation
+        // 0: Elevation (m) - Top Left
         {
           type: 'value',
+          gridIndex: 0,
           name: 'Wysokość (m)',
-          gridIndex: 0,
-          scale: true,
+          nameTextStyle: { color: '#818cf8', fontSize: 10 },
           splitLine: { lineStyle: { color: '#1e293b' } },
-          axisLabel: { color: '#64748b', fontSize: 10 },
-          nameTextStyle: { color: '#64748b', fontSize: 10 },
+          axisLabel: { color: '#818cf8', fontSize: 10 },
         },
-        // Grid 0 - Right: Speed
+        // 1: Speed (km/h) - Top Right
         {
           type: 'value',
+          gridIndex: 0,
           name: 'Prędkość (km/h)',
-          gridIndex: 0,
-          scale: true,
+          nameTextStyle: { color: '#2dd4bf', fontSize: 10 },
           splitLine: { show: false },
-          axisLabel: { color: '#64748b', fontSize: 10 },
-          nameTextStyle: { color: '#64748b', fontSize: 10 },
+          axisLabel: { color: '#2dd4bf', fontSize: 10 },
         },
-        // Grid 1 - Left: Power
+        // 2: Power (W) - Bottom Left
         {
           type: 'value',
+          gridIndex: 1,
           name: 'Moc (W)',
-          gridIndex: 1,
-          scale: true,
+          nameTextStyle: { color: '#f59e0b', fontSize: 10 },
           splitLine: { lineStyle: { color: '#1e293b' } },
-          axisLabel: { color: '#64748b', fontSize: 9 },
-          nameTextStyle: { color: '#64748b', fontSize: 9 },
+          axisLabel: { color: '#f59e0b', fontSize: 10 },
         },
-        // Grid 1 - Right: Delta Time
+        // 3: Time Delta (s) - Bottom Right
         {
           type: 'value',
-          name: 'Delta (s)',
           gridIndex: 1,
-          scale: true,
+          name: 'Delta czasu (s)',
+          nameTextStyle: { color: '#10b981', fontSize: 10 },
           splitLine: { show: false },
-          axisLabel: { color: '#64748b', fontSize: 9 },
-          nameTextStyle: { color: '#64748b', fontSize: 9 },
+          axisLabel: { color: '#10b981', fontSize: 10 },
         },
       ],
       dataZoom: [
         {
           type: 'inside',
           xAxisIndex: [0, 1],
-          filterMode: 'filter',
+          start: 0,
+          end: 100,
         },
         {
           type: 'slider',
           xAxisIndex: [0, 1],
-          bottom: '1%',
-          height: 18,
-          borderColor: '#1e293b',
-          backgroundColor: '#090d16',
-          fillerColor: 'rgba(20, 184, 166, 0.2)',
-          handleStyle: { color: '#14b8a6' },
-          textStyle: { color: '#64748b', fontSize: 9 },
+          start: 0,
+          end: 100,
+          bottom: 4,
+          height: 16,
+          borderColor: '#334155',
+          fillerColor: 'rgba(45, 212, 191, 0.2)',
+          handleStyle: { color: '#2dd4bf' },
+          textStyle: { color: '#94a3b8', fontSize: 9 },
         },
       ],
       series: [
-        // 1. Elevation (Filled Area)
+        // 1. Elevation Profile
         {
-          name: 'Wysokość terenu (m)',
+          name: 'Wysokość (m)',
           type: 'line',
           xAxisIndex: 0,
           yAxisIndex: 0,
           data: elevations,
           showSymbol: false,
-          smooth: true,
           lineStyle: { color: '#6366f1', width: 2 },
           areaStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: 'rgba(99, 102, 241, 0.35)' },
-                { offset: 1, color: 'rgba(99, 102, 241, 0.02)' },
-              ],
-            },
+            color: 'rgba(99, 102, 241, 0.25)',
           },
         },
-        // 2. Baseline Speed (Grey)
+        // 2. Baseline Speed
         {
           name: 'Prędkość bazowa (km/h)',
           type: 'line',
@@ -189,9 +182,9 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
           yAxisIndex: 1,
           data: baseSpeeds,
           showSymbol: false,
-          lineStyle: { color: '#64748b', width: 1.5, type: 'dotted' },
+          lineStyle: { color: '#64748b', width: 1.5, type: 'dashed' },
         },
-        // 3. Simulated Speed (Teal)
+        // 3. Simulated Speed
         {
           name: 'Prędkość symulowana (km/h)',
           type: 'line',
@@ -199,9 +192,9 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
           yAxisIndex: 1,
           data: simSpeeds,
           showSymbol: false,
-          lineStyle: { color: '#14b8a6', width: 2 },
+          lineStyle: { color: '#2dd4bf', width: 2 },
         },
-        // 4. Power (Amber)
+        // 4. Power (W)
         {
           name: 'Moc (W)',
           type: 'line',
@@ -211,7 +204,7 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
           showSymbol: false,
           lineStyle: { color: '#f59e0b', width: 1.5 },
         },
-        // 5. Time Delta (Emerald/Rose)
+        // 5. Time Delta (s)
         {
           name: 'Delta czasu (s)',
           type: 'line',
@@ -231,10 +224,18 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col gap-2">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
-          Profile telemetryczne: Wysokość, Prędkość i Zysk Czasowy
-        </h3>
+          <h3 className="text-sm font-semibold text-slate-100">
+            Profile telemetryczne: Wysokość, Prędkość i Zysk Czasowy
+          </h3>
+          <Tooltip
+            title="Interpretacja wykresów telemetrycznych"
+            content="Wykres górny prezentuje profil wysokości terenu oraz prędkość bazową vs symulowaną. Wykres dolny przedstawia moc oraz skumulowaną deltę czasu (zielone pole to zysk czasowy na danym odcinku)."
+            physicsNote="Najechanie na wykres synchronizuje kursor z dokładną pozycją kolarza na interaktywnej mapie trasy."
+            position="bottom"
+          />
+        </div>
         <span className="text-xs text-slate-500 font-mono">
           {spatialPoints.length} węzłów przestrzennych (krok 5m)
         </span>

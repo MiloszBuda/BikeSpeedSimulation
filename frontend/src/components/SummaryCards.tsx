@@ -1,6 +1,7 @@
 import React from 'react';
-import { Clock, Zap, Gauge, Mountain, Wind, CheckCircle } from 'lucide-react';
+import { Clock, Zap, Gauge, Mountain } from 'lucide-react';
 import { SimulationSummary, FitSummary } from '../types/simulation';
+import { Tooltip } from './Tooltip';
 
 interface SummaryCardsProps {
   simulationSummary: SimulationSummary | null;
@@ -26,7 +27,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Delta Czasu Card */}
-      <div className={`p-4 rounded-xl border relative overflow-hidden ${
+      <div className={`p-4 rounded-xl border relative ${
         simulationSummary
           ? isFaster
             ? 'bg-emerald-950/30 border-emerald-800/60 text-emerald-100'
@@ -34,9 +35,17 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           : 'bg-slate-900 border-slate-800 text-slate-100'
       }`}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Zysk / Strata Czasu (Delta)
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Zysk / Strata Czasu
+            </span>
+            <Tooltip
+              title="Zysk / Strata Czasu (Delta T)"
+              content="Różnica między czasem bazowym trasy (z pliku FIT) a czasem uzyskanym w symulacji (T_baza - T_sym). Wartość zielona oznacza czas zaoszczędzony (szybciej), a czerwona stratę (wolniej)."
+              physicsNote="Na trasie zamkniętej (pętla) wiatr ZAWSZE powoduje stratę netto czasu. Opór powietrza rośnie z kwadratem prędkości (Faero ~ v²), a pod wiatr jedziesz wolniej, więc spędzasz na tym odcinku znacznie więcej czasu niż na szybkim powrocie z wiatrem w plecy."
+              position="bottom"
+            />
+          </div>
           <Clock className={`w-4 h-4 ${isFaster ? 'text-emerald-400' : 'text-rose-400'}`} />
         </div>
         <div className="flex items-baseline gap-2">
@@ -54,11 +63,19 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
       </div>
 
       {/* 2. Ekwiwalent Mocy Card */}
-      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100">
+      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100 relative">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Ekwiwalent Mocy
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Ekwiwalent Mocy
+            </span>
+            <Tooltip
+              title="Ekwiwalent Mocy (Equivalent Power)"
+              content="Średnia moc kolarza w watach, jaka byłaby wymagana w nowych warunkach atmosferycznych, aby pokonać trasę w dokładnie takim samym czasie jak w przejeździe bazowym."
+              physicsNote="Wyliczany numerycznie metodą bisekcji na równaniu bilansu mocy i oporów Chunga z zachowaniem kinetyki bezwładności masy kolarza i roweru na zjazdach."
+              position="bottom"
+            />
+          </div>
           <Zap className="w-4 h-4 text-amber-400" />
         </div>
         <div className="flex items-baseline gap-2">
@@ -80,11 +97,19 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
       </div>
 
       {/* 3. Prędkość Symulowana vs Bazowa */}
-      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100">
+      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100 relative">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Średnia Prędkość
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Średnia Prędkość
+            </span>
+            <Tooltip
+              title="Prędkość i Dystans"
+              content="Porównanie średniej prędkości uzyskanej z modelu symulacyjnego z rzeczywistą średnią prędkością zarejestrowaną w pliku FIT."
+              physicsNote="Model przelicza wektorowo kąt wiatru pozornego (apparent wind) i opór aerodynamiczny dla każdego 5-metrowego odcinka trasy."
+              position="bottom"
+            />
+          </div>
           <Gauge className="w-4 h-4 text-teal-400" />
         </div>
         <div className="flex items-baseline gap-2">
@@ -103,11 +128,19 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
       </div>
 
       {/* 4. Model Fizyczny & Przewyższenie */}
-      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100">
+      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100 relative">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Model & Przewyższenie
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Model & Przewyższenie
+            </span>
+            <Tooltip
+              title="Parametry Fizyczne i Moc Znormalizowana"
+              content="CdA: Współczynnik oporu aerodynamicznego × pole powierzchni czołowej [m²]. Przewyższenie: Sumaryczne podjazdy wygładzone filtrem Savitzky-Golay usuwającym szum barometryczny. NP: Znormalizowana moc fizjologiczna (wg algorytmu dr. Andrew Coggana)."
+              physicsNote="Moc znormalizowana NP uwzględnia fizjologiczny koszt szarpanej jazdy (podnoszenie mocy do 4. potęgi) w odróżnieniu od prostej średniej arytmetycznej."
+              position="bottom"
+            />
+          </div>
           <Mountain className="w-4 h-4 text-indigo-400" />
         </div>
         <div className="flex items-baseline gap-2">

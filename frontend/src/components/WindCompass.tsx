@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Compass, RotateCw, RotateCcw, ArrowUp, RefreshCw } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 interface WindCompassProps {
   angle: number; // degrees [0, 360)
@@ -87,11 +88,17 @@ export const WindCompass: React.FC<WindCompassProps> = ({
   return (
     <div className="flex flex-col items-center select-none">
       <div className="flex items-center justify-between w-full mb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Compass className="w-4 h-4 text-teal-400" />
           <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-            Kierunek wiatru (skąd wieje)
+            Kierunek wiatru
           </span>
+          <Tooltip
+            title="Kierunek wiatru (róża wiatrów)"
+            content="Konwencja meteorologiczna określa kierunek, Z KTÓREGO wieje wiatr: 0° = Północ (N), 90° = Wschód (E), 180° = Południe (S), 270° = Zachód (W). Kliknij w dowolne miejsce tarczy lub przeciągaj igłę, aby zmienić kąt."
+            physicsNote="Wektor wiatru rzeczywistego łączy się wektorowo z prędkością kolarza tworząc wiatr pozorny (apparent wind), decydujący o oporze aerodynamicznym."
+            position="right"
+          />
         </div>
         <div className="text-right">
           <span className="text-sm font-bold text-teal-300 font-mono">

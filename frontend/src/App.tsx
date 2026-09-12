@@ -189,10 +189,21 @@ export const App: React.FC = () => {
       if (activeFile) {
         // Calculate angle rotation relative to dominant wind
         const baseDir = processData.weather_summary.dominant_wind_dir_deg;
+        const baseSpeed = processData.weather_summary.avg_wind_speed_cyclist_mps;
         const rotDeg = (config.windDirDeg - baseDir + 360) % 360;
-        const scaleFactor = processData.weather_summary.avg_wind_speed_cyclist_mps > 0
-          ? config.windSpeedMps / processData.weather_summary.avg_wind_speed_cyclist_mps
-          : 1.0;
+
+        // Detect if user is running baseline weather (within minor slider/compass rounding)
+        const isBaselineWeather =
+          !config.zeroWind &&
+          Math.abs(config.windSpeedMps - baseSpeed) < 0.1 &&
+          (Math.abs(rotDeg) < 1.5 || Math.abs(rotDeg - 360) < 1.5) &&
+          !config.reverseRoute &&
+          config.pacingMode === 'original';
+
+        const scaleFactor = isBaselineWeather
+          ? 1.0
+          : baseSpeed > 0 ? config.windSpeedMps / baseSpeed : 1.0;
+        const finalRotDeg = isBaselineWeather ? 0.0 : rotDeg;
 
         const res = await runSimulation(activeFile, {
           massKg: config.massKg,
@@ -202,7 +213,7 @@ export const App: React.FC = () => {
           spatialStepM: 5.0,
           zeroWind: config.zeroWind,
           windScaleFactor: config.zeroWind ? 0.0 : scaleFactor,
-          windRotationDeg: rotDeg,
+          windRotationDeg: finalRotDeg,
           reverseRoute: config.reverseRoute,
           pacingMode: config.pacingMode,
           calculateEquivalentPower: true,

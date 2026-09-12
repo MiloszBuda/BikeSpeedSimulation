@@ -21,15 +21,19 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
   fitSummary,
   cda,
 }) => {
-  const isFaster = (simulationSummary?.time_delta_s ?? 0) > 0;
-  const deltaFormatted = simulationSummary ? formatSeconds(simulationSummary.time_delta_s) : '0s';
+  const deltaSeconds = simulationSummary?.time_delta_s ?? 0;
+  const isZeroDelta = Math.abs(deltaSeconds) < 0.5;
+  const isFaster = deltaSeconds > 0;
+  const deltaFormatted = simulationSummary ? formatSeconds(deltaSeconds) : '0s';
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Delta Czasu Card */}
       <div className={`p-4 rounded-xl border relative ${
         simulationSummary
-          ? isFaster
+          ? isZeroDelta
+            ? 'bg-slate-900 border-slate-800 text-slate-100'
+            : isFaster
             ? 'bg-emerald-950/30 border-emerald-800/60 text-emerald-100'
             : 'bg-rose-950/30 border-rose-800/60 text-rose-100'
           : 'bg-slate-900 border-slate-800 text-slate-100'
@@ -41,19 +45,21 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
             </span>
             <Tooltip
               title="Zysk / Strata Czasu (Delta T)"
-              content="Różnica między czasem bazowym trasy (z pliku FIT) a czasem uzyskanym w symulacji (T_baza - T_sym). Wartość zielona oznacza czas zaoszczędzony (szybciej), a czerwona stratę (wolniej)."
+              content="Różnica między czasem bazowym trasy (z pliku FIT) a czasem uzyskanym w symulacji (T_baza - T_sym). Wartość zielona oznacza czas zaoszczędzony (szybciej), czerwona stratę (wolniej), a 0s brak zmiany warunków."
               physicsNote="Na trasie zamkniętej (pętla) wiatr ZAWSZE powoduje stratę netto czasu. Opór powietrza rośnie z kwadratem prędkości (Faero ~ v²), a pod wiatr jedziesz wolniej, więc spędzasz na tym odcinku znacznie więcej czasu niż na szybkim powrocie z wiatrem w plecy."
               position="bottom"
             />
           </div>
-          <Clock className={`w-4 h-4 ${isFaster ? 'text-emerald-400' : 'text-rose-400'}`} />
+          <Clock className={`w-4 h-4 ${isZeroDelta ? 'text-teal-400' : isFaster ? 'text-emerald-400' : 'text-rose-400'}`} />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className={`text-2xl font-black font-mono ${isFaster ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {simulationSummary ? (isFaster ? `-${deltaFormatted}` : `+${deltaFormatted}`) : '--'}
+          <span className={`text-2xl font-black font-mono ${
+            isZeroDelta ? 'text-teal-300' : isFaster ? 'text-emerald-400' : 'text-rose-400'
+          }`}>
+            {simulationSummary ? (isZeroDelta ? '0m 00s' : isFaster ? `-${deltaFormatted}` : `+${deltaFormatted}`) : '--'}
           </span>
           <span className="text-xs text-slate-400">
-            {simulationSummary ? (isFaster ? 'szybciej' : 'wolniej') : ''}
+            {simulationSummary ? (isZeroDelta ? '(zgodny z bazą)' : isFaster ? 'szybciej' : 'wolniej') : ''}
           </span>
         </div>
         <div className="text-[11px] text-slate-400 mt-2 flex justify-between border-t border-slate-800/60 pt-1.5 font-mono">
@@ -118,7 +124,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
           </span>
           <span className="text-xs text-slate-400">km/h</span>
           <span className="text-xs text-slate-500 font-mono">
-            (baza: {fitSummary.avg_speed_kmh.toFixed(1)})
+            (baza: {(simulationSummary?.baseline_avg_speed_kmh ?? fitSummary.avg_speed_kmh).toFixed(1)})
           </span>
         </div>
         <div className="text-[11px] text-slate-400 mt-2 flex justify-between border-t border-slate-800/60 pt-1.5 font-mono">

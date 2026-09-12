@@ -133,10 +133,12 @@ class SimulationEngine:
             wind_scenario_desc = f"Scale {request.wind_scale_factor}x, Rotated {request.wind_rotation_deg} deg"
 
         # Check if the user is running the exact baseline scenario
+        rot_norm = float(request.wind_rotation_deg) % 360.0
+        is_rot_zero = math.isclose(rot_norm, 0.0, abs_tol=1.0) or math.isclose(rot_norm, 360.0, abs_tol=1.0)
         is_baseline = (
             not request.zero_wind
-            and math.isclose(request.wind_scale_factor, 1.0, rel_tol=1e-3)
-            and math.isclose(request.wind_rotation_deg, 0.0, abs_tol=1e-2)
+            and math.isclose(request.wind_scale_factor, 1.0, rel_tol=0.03)
+            and is_rot_zero
             and not request.reverse_route
             and request.pacing_mode == PacingMode.ORIGINAL
         )

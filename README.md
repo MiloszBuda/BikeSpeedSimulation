@@ -66,33 +66,3 @@ npm run dev
 
 Frontend uruchomi się pod adresem: `http://localhost:3000`.
 
----
-
-## Wdrożenie na GitHub Pages
-
-Aplikacja jest w pełni przystosowana do działania jako statyczna strona SPA na **GitHub Pages** (wraz z wbudowanym trybem demonstracyjnym trasy 12 km pętli).
-
-### Opcja A: Automatyczny deploy przez GitHub Actions (Zalecana)
-
-W repozytorium skonfigurowany jest workflow `.github/workflows/deploy.yml`.
-
-1. Wypchnij zmiany do gałęzi `main`:
-   ```bash
-   git push origin main
-   ```
-2. Przejdź do swojego repozytorium na GitHubie:
-   - Wejdź w **Settings** -> **Pages**.
-   - W sekcji **Build and deployment -> Source** wybierz **GitHub Actions**.
-3. Przy każdym pushu do `main` aplikacja zostanie automatycznie zbudowana i opublikowana!
-
-### Opcja B: Ręczny deploy z terminala (`gh-pages`)
-
-Możesz wdrożyć frontend jednym poleceniem bezpośrednio ze swojego komputera:
-
-```pwsh
-cd frontend
-npm run deploy
-```
-
-Polecenie zbuduje aplikację do katalogu `dist` i wypchnie go na dedykowaną gałąź `gh-pages`.
-W ustawieniach repozytorium (**Settings -> Pages**) wybierz wtedy gałąź `gh-pages` jako źródło publikacji.

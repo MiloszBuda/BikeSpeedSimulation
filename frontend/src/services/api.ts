@@ -4,11 +4,12 @@ import {
   WhatIfSimulationResponse,
 } from '../types/simulation';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const DEFAULT_API_URL = 'https://bikespeedsimulation.onrender.com';
+const API_BASE = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
 
 export async function checkBackendHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/health`, { method: 'GET', signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${API_BASE}/health`, { method: 'GET', signal: AbortSignal.timeout(6000) });
     return res.ok;
   } catch {
     return false;

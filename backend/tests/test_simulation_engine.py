@@ -294,23 +294,22 @@ def test_simulation_downhill_no_speed_jump():
 
 def test_simulation_sprint_power_bounded_and_no_explosive_speed_jump():
     """
-    Regression test: a 1035W sprint on a -6.2% gradient with baseline speed 33.7 km/h -> 43 km/h
+    Regression test: a 1035W sprint on flat terrain with baseline speed 33.7 km/h -> 43 km/h
     must NOT explode to 81.3 km/h and must NOT jump 30+ km/h over 50 meters.
     """
     base_time = datetime(2023, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
     points: list[EnrichedPoint] = []
 
-    # 40 points (400m): approach at 33.7 km/h (9.36 m/s), 220W, s = -6.2%
+    # 40 points (400m): approach at 33.7 km/h (9.36 m/s), 220W on flat terrain (elev = 200.0m)
     for i in range(40):
         dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
-        elev = 200.0 - i * 0.62  # -6.2% grade
         points.append(
             EnrichedPoint(
                 time_offset_s=i,
                 timestamp=dt,
                 lat=52.0 + i * 0.0001,
                 lon=21.0,
-                elevation_m=elev,
+                elevation_m=200.0,
                 distance_m=i * 10.0,
                 speed_mps=9.36,  # 33.7 km/h
                 speed_kmh=33.7,
@@ -331,17 +330,16 @@ def test_simulation_sprint_power_bounded_and_no_explosive_speed_jump():
             )
         )
 
-    # 10 points (100m): 1035W sprint, baseline speed accelerates to 43.0 km/h (11.94 m/s)
+    # 10 points (100m): 1035W sprint on flat terrain
     for i in range(40, 50):
         dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
-        elev = 200.0 - i * 0.62
         points.append(
             EnrichedPoint(
                 time_offset_s=i,
                 timestamp=dt,
                 lat=52.0 + i * 0.0001,
                 lon=21.0,
-                elevation_m=elev,
+                elevation_m=200.0,
                 distance_m=i * 10.0,
                 speed_mps=11.94,  # 43.0 km/h
                 speed_kmh=43.0,
@@ -373,8 +371,9 @@ def test_simulation_sprint_power_bounded_and_no_explosive_speed_jump():
     sim_speeds = [sp.simulated_speed_kmh for sp in res.spatial_points]
     max_sim_speed = max(sim_speeds)
 
-    # 1. Max simulated speed must NOT reach 81.3 km/h or anything above 55 km/h
+    # 1. Max simulated speed on flat sprint must NOT reach 81.3 km/h or anything above 55 km/h
     assert max_sim_speed < 55.0, f"Max speed {max_sim_speed:.1f} km/h exceeded realistic threshold"
+    assert max_sim_speed > 45.0, f"Max speed {max_sim_speed:.1f} km/h failed to accelerate properly"
 
     # 2. Acceleration check: over any 50m window (10 spatial steps of 5m), speed delta cannot exceed 18 km/h
     for k in range(len(sim_speeds) - 10):

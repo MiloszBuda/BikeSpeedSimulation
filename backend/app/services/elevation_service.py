@@ -88,3 +88,26 @@ class ElevationService:
 
         # Clip to realistic road cycling slope (-35% to +35%)
         return np.clip(slope, -max_slope, max_slope)
+
+    @staticmethod
+    def smooth_slope(
+        slope: np.ndarray,
+        window_length: int = 11,
+        polyorder: int = 2,
+    ) -> np.ndarray:
+        """
+        Smooth slope profile using Savitzky-Golay filter to eliminate high-frequency
+        gradient micro-artifacts from discrete sensor noise without flattening real hills.
+        """
+        n = len(slope)
+        if n <= 3:
+            return slope.copy()
+
+        w = min(window_length, n)
+        if w % 2 == 0:
+            w -= 1
+        if w <= polyorder:
+            return slope.copy()
+
+        return savgol_filter(slope, window_length=w, polyorder=polyorder)
+

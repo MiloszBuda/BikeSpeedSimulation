@@ -113,67 +113,64 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         <div className="flex flex-col gap-3 min-w-0">
           {/* Toggle On/Off Zero Wind */}
           <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2.5">
-            {/* Line 1: Clear Description & Status */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <div
-                  className={`p-1.5 rounded-md shrink-0 ${
-                    config.zeroWind ? 'bg-rose-500/15 text-rose-400' : 'bg-teal-500/15 text-teal-400'
-                  }`}
-                >
-                  {config.zeroWind ? <CloudOff className="w-4 h-4" /> : <Wind className="w-4 h-4" />}
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-xs font-semibold text-slate-200 whitespace-nowrap">
-                    Symulacja bezwietrzna
-                  </span>
-                  <Tooltip
-                    title="Symulacja bezwietrzna (Zero Wind)"
-                    content="Wyzerowanie prędkości wiatru (0 m/s) na całej trasie. Pokazuje czysty potencjał wydolnościowy i wpływ samego profilu terenu na czas przejazdu."
-                    physicsNote="Eliminuje składową wiatru atmosferycznego. Prędkość wiatru pozornego równa się wówczas dokładnie prędkości kolarza."
-                    position="bottom"
-                  />
-                </div>
+            {/* Line 1: Clear Description */}
+            <div className="flex items-center gap-2">
+              <div
+                className={`p-1.5 rounded-md shrink-0 ${
+                  config.zeroWind ? 'bg-rose-500/15 text-rose-400' : 'bg-teal-500/15 text-teal-400'
+                }`}
+              >
+                {config.zeroWind ? <CloudOff className="w-4 h-4" /> : <Wind className="w-4 h-4" />}
               </div>
-              <span className="text-[11px] text-slate-400 shrink-0 font-mono">
-                {config.zeroWind ? '0 m/s na trasie' : 'Wiatr aktywny'}
-              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-xs font-semibold text-slate-200">
+                  Symulacja bezwietrzna
+                </span>
+                <Tooltip
+                  title="Symulacja bezwietrzna (Zero Wind)"
+                  content="Wyzerowanie prędkości wiatru (0 m/s) na całej trasie. Pokazuje czysty potencjał wydolnościowy i wpływ samego profilu terenu na czas przejazdu."
+                  physicsNote="Eliminuje składową wiatru atmosferycznego. Prędkość wiatru pozornego równa się wówczas dokładnie prędkości kolarza."
+                  position="bottom"
+                />
+              </div>
             </div>
 
             {/* Line 2: Setting Option Underneath */}
             <button
               type="button"
               onClick={() => update({ zeroWind: !config.zeroWind })}
-              className={`w-full py-1.5 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
+              className={`w-full py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
                 config.zeroWind
                   ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
                   : 'bg-teal-500/20 text-teal-300 border border-teal-500/40 hover:bg-teal-500/30'
               }`}
             >
-              {config.zeroWind ? 'BEZ WIATRU (WYCISZENIE)' : 'Z WIATREM (WARUNKI REALNE)'}
+              {config.zeroWind ? 'BEZ WIATRU (0 m/s na trasie)' : 'Z WIATREM (WARUNKI REALNE)'}
             </button>
           </div>
 
           {/* Wind Speed Slider & Input */}
           <div
-            className={`p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2 transition-opacity ${
+            className={`p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2.5 transition-opacity ${
               config.zeroWind ? 'opacity-40 pointer-events-none' : ''
             }`}
           >
-            {/* Line 1: Clear Description & Values */}
+            {/* Line 1: Clear Description */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <label className="text-xs font-semibold text-slate-200">
+                Prędkość wiatru przy kolarzu
+              </label>
+              <Tooltip
+                title="Prędkość wiatru przy kolarzu"
+                content="Prędkość wiatru rzeczywistego w m/s oraz km/h. Możesz wpisać dokładną wartość lub przesunąć suwak."
+                physicsNote="Prędkość wiatru ze stacji meteo (10 m) jest przeliczana profilem Hellmanna na wysokość kolarza (~1.5 m): v_cyclist = v_10 * (1.5/10)^0.2 ~ 0.68 * v_10."
+                position="bottom"
+              />
+            </div>
+
+            {/* Line 2: Exact Value Input & Metric Badge */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <label className="text-xs font-semibold text-slate-200 whitespace-nowrap">
-                  Prędkość wiatru przy kolarzu
-                </label>
-                <Tooltip
-                  title="Prędkość wiatru przy kolarzu"
-                  content="Prędkość wiatru rzeczywistego w m/s oraz km/h. Możesz wpisać dokładną wartość lub przesunąć suwak."
-                  physicsNote="Prędkość wiatru ze stacji meteo (10 m) jest przeliczana profilem Hellmanna na wysokość kolarza (~1.5 m): v_cyclist = v_10 * (1.5/10)^0.2 ~ 0.68 * v_10."
-                  position="bottom"
-                />
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1.5">
                 <input
                   type="number"
                   min="0"
@@ -181,17 +178,17 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                   step="0.1"
                   value={Number(config.windSpeedMps.toFixed(1))}
                   onChange={(e) => update({ windSpeedMps: parseFloat(e.target.value) || 0 })}
-                  className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-right font-mono text-teal-300 font-bold focus:outline-none focus:border-teal-500"
+                  className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-center font-mono text-teal-300 font-bold focus:outline-none focus:border-teal-500"
                 />
                 <span className="text-xs text-slate-400 font-medium">m/s</span>
-                <span className="text-[11px] text-teal-400/90 font-mono bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  {(config.windSpeedMps * 3.6).toFixed(1)} km/h
-                </span>
               </div>
+              <span className="text-xs text-teal-400 font-mono bg-slate-900 border border-slate-800 px-2.5 py-1 rounded">
+                {(config.windSpeedMps * 3.6).toFixed(1)} km/h
+              </span>
             </div>
 
-            {/* Line 2: Setting Option (Slider & Ticks) Underneath */}
-            <div className="pt-1">
+            {/* Line 3: Setting Option (Slider & Ticks) */}
+            <div>
               <input
                 type="range"
                 min="0"
@@ -212,44 +209,39 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
 
           {/* Route Reversal Toggle */}
           <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2.5">
-            {/* Line 1: Clear Description & Status */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <div
-                  className={`p-1.5 rounded-md shrink-0 ${
-                    config.reverseRoute ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-xs font-semibold text-slate-200 whitespace-nowrap">
-                    Odwrócenie trasy („Jazda pod prąd”)
-                  </span>
-                  <Tooltip
-                    title="Odwróć trasę („Jazda pod prąd”)"
-                    content="Odwrócenie kolejności trasy GPS oraz znaków nachylenia terenu (podjazdy stają się zjazdami). Pozwala sprawdzić, jak zmieniłby się czas przy jeździe w przeciwnym kierunku."
-                    physicsNote="Umożliwia analizę taktyczną: czy na danej trasie pętlowej przy obecnym kierunku wiatru bardziej opłaca się jechać zgodnie czy przeciwnie do ruchu wskazówek zegara."
-                    position="bottom"
-                  />
-                </div>
+            {/* Line 1: Clear Description */}
+            <div className="flex items-center gap-2">
+              <div
+                className={`p-1.5 rounded-md shrink-0 ${
+                  config.reverseRoute ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-400'
+                }`}
+              >
+                <ArrowRightLeft className="w-4 h-4" />
               </div>
-              <span className="text-[11px] text-slate-400 shrink-0 font-mono">
-                {config.reverseRoute ? 'Podjazdy to zjazdy' : 'Zgodnie z GPS'}
-              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-xs font-semibold text-slate-200">
+                  Odwrócenie trasy („Jazda pod prąd”)
+                </span>
+                <Tooltip
+                  title="Odwróć trasę („Jazda pod prąd”)"
+                  content="Odwrócenie kolejności trasy GPS oraz znaków nachylenia terenu (podjazdy stają się zjazdami). Pozwala sprawdzić, jak zmieniłby się czas przy jeździe w przeciwnym kierunku."
+                  physicsNote="Umożliwia analizę taktyczną: czy na danej trasie pętlowej przy obecnym kierunku wiatru bardziej opłaca się jechać zgodnie czy przeciwnie do ruchu wskazówek zegara."
+                  position="bottom"
+                />
+              </div>
             </div>
 
             {/* Line 2: Setting Option Underneath */}
             <button
               type="button"
               onClick={() => update({ reverseRoute: !config.reverseRoute })}
-              className={`w-full py-1.5 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
+              className={`w-full py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
                 config.reverseRoute
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                   : 'bg-slate-800 text-slate-300 hover:text-slate-100 border border-slate-700'
               }`}
             >
-              {config.reverseRoute ? 'ODWRÓCONA (JAZDA OD KOŃCA DO POCZĄTKU)' : 'NORMALNA (ZGODNIE Z KIERUNKIEM GPS)'}
+              {config.reverseRoute ? 'ODWRÓCONA (JAZDA POD PRĄD)' : 'NORMALNA (ZGODNIE Z KIERUNKIEM GPS)'}
             </button>
           </div>
         </div>

@@ -220,61 +220,62 @@ export const WindCompass: React.FC<WindCompassProps> = ({
       </div>
 
       {/* Quick Action Angle Buttons */}
-      <div className="flex items-center gap-1.5 mt-3">
+      <div className="grid grid-cols-3 gap-1.5 w-full mt-3">
         <button
           type="button"
           disabled={disabled}
           onClick={() => rotateBy(-45)}
-          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 text-xs rounded border border-slate-700 flex items-center gap-1 transition-colors"
+          className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 text-xs rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition-colors active:scale-95"
           title="Obróć o 45° w lewo"
         >
-          <RotateCcw className="w-3 h-3" />
-          -45°
+          <RotateCcw className="w-3 h-3 text-slate-400" />
+          <span>-45°</span>
         </button>
 
         <button
           type="button"
           disabled={disabled}
           onClick={() => rotateBy(180)}
-          className="px-2.5 py-1 bg-teal-950/60 hover:bg-teal-900/80 border border-teal-700/60 text-teal-300 text-xs font-medium rounded flex items-center gap-1 transition-colors"
+          className="py-1.5 px-2 bg-teal-950/70 hover:bg-teal-900 border border-teal-600/50 text-teal-300 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors active:scale-95"
           title="Odwróć wiatr o 180°"
         >
           <RefreshCw className="w-3 h-3 text-teal-400" />
-          180°
+          <span>180°</span>
         </button>
 
         <button
           type="button"
           disabled={disabled}
           onClick={() => rotateBy(45)}
-          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 text-xs rounded border border-slate-700 flex items-center gap-1 transition-colors"
+          className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 text-xs rounded-lg border border-slate-700 flex items-center justify-center gap-1 transition-colors active:scale-95"
           title="Obróć o 45° w prawo"
         >
-          +45°
-          <RotateCw className="w-3 h-3" />
+          <span>+45°</span>
+          <RotateCw className="w-3 h-3 text-slate-400" />
         </button>
       </div>
 
       {/* Preset Cardinal Buttons */}
-      <div className="grid grid-cols-4 gap-1.5 w-full max-w-[260px] mt-2">
+      <div className="grid grid-cols-4 gap-1.5 w-full mt-2">
         {[
-          { label: 'N (0°)', deg: 0 },
-          { label: 'E (90°)', deg: 90 },
-          { label: 'S (180°)', deg: 180 },
-          { label: 'W (270°)', deg: 270 },
+          { label: 'N', deg: 0, text: '0°' },
+          { label: 'E', deg: 90, text: '90°' },
+          { label: 'S', deg: 180, text: '180°' },
+          { label: 'W', deg: 270, text: '270°' },
         ].map((p) => (
           <button
             key={p.deg}
             type="button"
             disabled={disabled}
             onClick={() => onChange(p.deg)}
-            className={`py-1 px-1 text-[11px] font-mono rounded border transition-colors whitespace-nowrap text-center ${
+            className={`py-1.5 px-1 text-xs rounded-lg border transition-all text-center flex items-center justify-center gap-1 ${
               Math.abs(angle - p.deg) < 1
-                ? 'bg-teal-600 text-white border-teal-500 font-bold'
-                : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-800'
+                ? 'bg-teal-600 text-white border-teal-400 font-bold shadow-sm ring-1 ring-teal-400/30'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800 hover:border-slate-700'
             }`}
           >
-            {p.label}
+            <span className="font-bold">{p.label}</span>
+            <span className="text-[10px] text-slate-400 font-mono">({p.text})</span>
           </button>
         ))}
       </div>

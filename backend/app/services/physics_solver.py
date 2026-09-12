@@ -1,12 +1,175 @@
-"""Vectorized Newton-Raphson solvers for bike speed under windless and arbitrary wind conditions."""
+"""Physics-based cycling speed simulation and power balance solvers."""
 
+import math
 import numpy as np
 
 from app.config import settings
 
 
 class PhysicsSolver:
-    """Numerical solver for bike power balance equations."""
+    """Numerical solver for continuous distance-domain cycling simulation and power balance equations."""
+
+    @staticmethod
+    def _net_force(
+        speed: float,
+        power: float,
+        slope: float,
+        wind_parallel: float,
+        wind_perpendicular: float,
+        mass: float,
+        cda: float,
+        crr: float,
+        rho: float,
+        eta: float,
+        g: float,
+    ) -> float:
+        """
+        Calculate instantaneous net force acting on the bicycle along the road.
+        Positive force accelerates the bicycle forward; negative force decelerates it.
+        """
+        speed = max(speed, 0.5)
+
+        # Power converted to mechanical driving force at the wheel
+        p_mech = max(power * eta, 0.0)
+        f_pedal = min(p_mech / speed, 800.0)  # Max crank torque / traction limit
+
+        # Downhill gravity component (slope < 0 accelerates forward)
+        f_gravity = -mass * g * slope
+
+        # Aerodynamic drag opposing motion
+        relative_headwind = speed + wind_parallel
+        apparent_wind = math.sqrt(
+            relative_headwind * relative_headwind
+            + wind_perpendicular * wind_perpendicular
+        )
+        f_aero = 0.5 * rho * cda * apparent_wind * relative_headwind
+
+        # Rolling resistance opposing motion
+        f_rr = mass * g * crr
+
+        # Road descent safety braking:
+        # Cyclists control descent speed via braking on steep grades when coasting/low power
+        f_brake = 0.0
+        if slope < -0.015 and power < 30.0 and speed > 17.0:
+            f_brake = (speed - 17.0) * 40.0
+
+        return f_pedal + f_gravity - f_aero - f_rr - f_brake
+
+    @staticmethod
+    def simulate_speed_arbitrary_wind(
+        P: np.ndarray,
+        s: np.ndarray,
+        bearing_deg: np.ndarray,
+        wind_speed: np.ndarray,
+        wind_dir_deg: np.ndarray,
+        m: float = settings.DEFAULT_MASS,
+        CdA: float = settings.DEFAULT_CDA,
+        Crr: float = settings.DEFAULT_CRR,
+        rho: np.ndarray = None,
+        eta: float = settings.DEFAULT_ETA,
+        g: float = settings.GRAVITY,
+        initial_speed: float = 8.0,
+        distance_step_m: float = 5.0,
+        substeps: int = 4,
+        max_speed_mps: float = 30.0,
+    ) -> np.ndarray:
+        """
+        Simulate continuous bicycle speed along a distance grid using predictor-corrector
+        (Heun's method) in v^2 kinetic energy space: d(v^2)/dx = 2/m * F_net(v).
+        Guarantees smooth, continuous physics and eliminates independent point artifacts.
+        """
+        P = np.asarray(P, dtype=np.float64)
+        s = np.asarray(s, dtype=np.float64)
+        bearing_deg = np.asarray(bearing_deg, dtype=np.float64)
+        wind_speed = np.asarray(wind_speed, dtype=np.float64)
+        wind_dir_deg = np.asarray(wind_dir_deg, dtype=np.float64)
+
+        if rho is None:
+            rho = np.full_like(P, settings.DEFAULT_RHO)
+        else:
+            rho = np.asarray(rho, dtype=np.float64)
+
+        n = len(P)
+        if n == 0:
+            return np.array([], dtype=np.float64)
+        if n == 1:
+            return np.array([max(0.5, min(initial_speed, max_speed_mps))])
+
+        bearing_rad = np.radians(bearing_deg)
+        wind_dir_rad = np.radians(wind_dir_deg)
+        beta = wind_dir_rad - bearing_rad
+        wind_parallel = wind_speed * np.cos(beta)
+        wind_perpendicular = wind_speed * np.sin(beta)
+
+        speed = np.zeros(n, dtype=np.float64)
+        speed[0] = max(0.5, min(initial_speed, max_speed_mps))
+
+        h = distance_step_m / max(1, substeps)
+
+        for i in range(1, n):
+            v2 = speed[i - 1] ** 2
+
+            for step_idx in range(substeps):
+                alpha = step_idx / substeps
+                alpha_next = (step_idx + 1) / substeps
+
+                p_curr = float(P[i - 1] * (1 - alpha) + P[i] * alpha)
+                s_curr = float(s[i - 1] * (1 - alpha) + s[i] * alpha)
+                w_par_curr = float(wind_parallel[i - 1] * (1 - alpha) + wind_parallel[i] * alpha)
+                w_perp_curr = float(wind_perpendicular[i - 1] * (1 - alpha) + wind_perpendicular[i] * alpha)
+                rho_curr = float(rho[i - 1] * (1 - alpha) + rho[i] * alpha)
+
+                p_next = float(P[i - 1] * (1 - alpha_next) + P[i] * alpha_next)
+                s_next = float(s[i - 1] * (1 - alpha_next) + s[i] * alpha_next)
+                w_par_next = float(wind_parallel[i - 1] * (1 - alpha_next) + wind_parallel[i] * alpha_next)
+                w_perp_next = float(wind_perpendicular[i - 1] * (1 - alpha_next) + wind_perpendicular[i] * alpha_next)
+                rho_next = float(rho[i - 1] * (1 - alpha_next) + rho[i] * alpha_next)
+
+                v_curr = math.sqrt(max(v2, 0.25))
+
+                # Force at current speed
+                force_curr = PhysicsSolver._net_force(
+                    speed=v_curr,
+                    power=p_curr,
+                    slope=s_curr,
+                    wind_parallel=w_par_curr,
+                    wind_perpendicular=w_perp_curr,
+                    mass=m,
+                    cda=CdA,
+                    crr=Crr,
+                    rho=rho_curr,
+                    eta=eta,
+                    g=g,
+                )
+
+                # Predictor
+                v2_pred = v2 + (2.0 * h / m) * force_curr
+                v2_pred = max(0.25, min(max_speed_mps**2, v2_pred))
+                v_pred = math.sqrt(v2_pred)
+
+                # Force at predicted speed
+                force_pred = PhysicsSolver._net_force(
+                    speed=v_pred,
+                    power=p_next,
+                    slope=s_next,
+                    wind_parallel=w_par_next,
+                    wind_perpendicular=w_perp_next,
+                    mass=m,
+                    cda=CdA,
+                    crr=Crr,
+                    rho=rho_next,
+                    eta=eta,
+                    g=g,
+                )
+
+                # Corrector (Heun average force)
+                force_avg = 0.5 * (force_curr + force_pred)
+                v2 = v2 + (2.0 * h / m) * force_avg
+                v2 = max(0.25, min(max_speed_mps**2, v2))
+
+            speed[i] = math.sqrt(v2)
+
+        return speed
 
     @staticmethod
     def solve_v0_vectorized(

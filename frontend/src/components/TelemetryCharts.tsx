@@ -61,8 +61,14 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
                 <span>Prędkość symulowana:</span> <b class="font-mono">${vSim} km/h</b>
               </div>
               <div class="flex items-center gap-2 text-amber-400">
-                <span>Moc:</span> <b class="font-mono">${p.power_w.toFixed(0)} W</b>
+                <span>Moc FIT:</span> <b class="font-mono">${p.power_w.toFixed(0)} W</b>
+                ${p.power_effective_w !== undefined && Math.abs(p.power_effective_w - p.power_w) > 5 ? `<span class="text-amber-300/80 font-mono text-[11px]">(efekt: ${p.power_effective_w.toFixed(0)} W)</span>` : ''}
               </div>
+              ${p.acceleration_mps2 !== undefined ? `
+              <div class="flex items-center gap-2 text-cyan-400">
+                <span>Przyspieszenie:</span> <b class="font-mono">${p.acceleration_mps2 >= 0 ? '+' : ''}${p.acceleration_mps2.toFixed(2)} m/s²</b>
+              </div>
+              ` : ''}
               <div class="flex items-center gap-2 ${p.delta_time_s >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
                 <span>Skumulowana delta czasu:</span> <b class="font-mono">${delta}</b>
               </div>

@@ -380,5 +380,13 @@ def test_simulation_sprint_power_bounded_and_no_explosive_speed_jump():
         delta_50m = sim_speeds[k + 10] - sim_speeds[k]
         assert delta_50m < 18.0, f"Speed jump {delta_50m:.1f} km/h over 50m exceeded physical limit"
 
+    # 3. Diagnostic telemetry: verify power_effective_w and acceleration_mps2
+    for sp in res.spatial_points:
+        assert sp.power_effective_w is not None
+        assert sp.acceleration_mps2 is not None
+        # Max forward acceleration should stay within physiological limits
+        assert sp.acceleration_mps2 <= 1.25, f"Acceleration {sp.acceleration_mps2} m/s^2 exceeded physical limit"
+
+
 
 

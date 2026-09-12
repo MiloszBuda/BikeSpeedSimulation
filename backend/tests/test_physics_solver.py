@@ -102,3 +102,27 @@ def test_solve_speed_terminal_velocity_coasting():
     v = float(v_sim[0])
     # Terminal velocity on -7% descent is typically ~17-21 m/s (60-75 km/h)
     assert 15.0 < v < 25.0
+
+
+def test_smooth_power_response_asymmetric_lag():
+    """Verify that instantaneous power surges ramp smoothly and decay smoothly."""
+    time_s = np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
+    # Step from 200W to 1000W at t=1, then drop back to 200W at t=4
+    raw_power = np.array([200.0, 1000.0, 1000.0, 1000.0, 200.0, 200.0, 200.0, 200.0])
+
+    p_eff = PhysicsSolver.smooth_power_response(raw_power, time_s, tau_up=1.2, tau_down=2.2)
+
+    # Initial value
+    assert math.isclose(p_eff[0], 200.0, abs_tol=1e-3)
+
+    # At t=1 (first second of 1000W spike): should be ~650W, NOT 1000W immediately
+    assert 550.0 < p_eff[1] < 750.0
+
+    # At t=3: should have ramped close to ~950W
+    assert p_eff[3] > p_eff[2] > p_eff[1]
+    assert p_eff[3] > 900.0
+
+    # At t=4 (drop back to 200W): should decay smoothly (tau_down=2.2s), not plunge to 200W instantly
+    assert p_eff[4] > 400.0
+    assert p_eff[5] < p_eff[4]
+

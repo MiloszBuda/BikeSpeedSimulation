@@ -10,6 +10,35 @@ class PhysicsSolver:
     """Numerical solver for continuous distance-domain cycling simulation and power balance equations."""
 
     @staticmethod
+    def smooth_power_response(
+        power: np.ndarray,
+        time_s: np.ndarray,
+        tau_up: float = 1.2,
+        tau_down: float = 2.2,
+    ) -> np.ndarray:
+        """
+        Apply asymmetric first-order power response model to suppress unrealistic instantaneous power spikes.
+        Models neuromuscular torque ramp-up (~1.2s) and drivetrain/cadence momentum decay (~2.2s).
+        Preserves total physical work (integral of P dt) while eliminating unphysical square-wave force spikes.
+        """
+        power = np.asarray(power, dtype=np.float64)
+        time_s = np.asarray(time_s, dtype=np.float64)
+        n = len(power)
+        if n == 0:
+            return power.copy()
+
+        result = np.zeros_like(power)
+        result[0] = max(0.0, float(power[0]))
+
+        for i in range(1, n):
+            dt = max(1e-3, float(time_s[i] - time_s[i - 1]))
+            tau = tau_up if power[i] > result[i - 1] else tau_down
+            alpha = 1.0 - math.exp(-dt / tau)
+            result[i] = result[i - 1] + alpha * (power[i] - result[i - 1])
+
+        return result
+
+    @staticmethod
     def _net_force(
         speed: float,
         power: float,
@@ -26,12 +55,29 @@ class PhysicsSolver:
         """
         Calculate instantaneous net force acting on the bicycle along the road.
         Positive force accelerates the bicycle forward; negative force decelerates it.
+        Includes standing sprint aerodynamics, cadence efficiency limits, and acceleration capping.
         """
         speed = max(speed, 0.5)
 
+        # Out-of-the-saddle sprint aerodynamics:
+        # High-power sprints (>400W) involve standing out of the saddle, rocking the bike,
+        # and presenting a significantly larger frontal area (+20% to +25% CdA).
+        effective_cda = cda
+        if power > 400.0:
+            sprint_factor = min(0.25, 0.25 * ((power - 400.0) / 450.0))
+            effective_cda = cda * (1.0 + sprint_factor)
+
         # Power converted to mechanical driving force at the wheel
         p_mech = max(power * eta, 0.0)
-        f_pedal = min(p_mech / speed, 800.0)  # Max crank torque / traction limit
+
+        # High-speed cadence efficiency drop:
+        # At speeds above 52 km/h (14.5 m/s) on flat/tailwind, cyclists spin out their top gear
+        # (e.g. 52x11 or 50x11 requires cadence > 115-125 RPM where neuromuscular force drops).
+        if speed > 14.5 and slope > -0.02:
+            cadence_efficiency = max(0.60, 1.0 - (speed - 14.5) * 0.08)
+            p_mech *= cadence_efficiency
+
+        f_pedal = min(p_mech / speed, 750.0)  # Max crank torque / traction limit
 
         # Downhill gravity component (slope < 0 accelerates forward)
         f_gravity = -mass * g * slope
@@ -42,7 +88,7 @@ class PhysicsSolver:
             relative_headwind * relative_headwind
             + wind_perpendicular * wind_perpendicular
         )
-        f_aero = 0.5 * rho * cda * apparent_wind * relative_headwind
+        f_aero = 0.5 * rho * effective_cda * apparent_wind * relative_headwind
 
         # Rolling resistance opposing motion
         f_rr = mass * g * crr
@@ -53,7 +99,15 @@ class PhysicsSolver:
         if slope < -0.015 and power < 30.0 and speed > 17.0:
             f_brake = (speed - 17.0) * 40.0
 
-        return f_pedal + f_gravity - f_aero - f_rr - f_brake
+        f_net = f_pedal + f_gravity - f_aero - f_rr - f_brake
+
+        # Acceleration cap: road cyclist on a bicycle cannot exceed realistic physiological forward acceleration
+        # Higher at low speeds (standing starts ~1.25 m/s^2), lower at high sprint speeds (~0.55-0.75 m/s^2)
+        a_max = max(0.55, min(1.25, 32.0 / max(speed, 8.0)))
+        if f_net > 0:
+            f_net = min(f_net, mass * a_max)
+
+        return f_net
 
     @staticmethod
     def simulate_speed_arbitrary_wind(

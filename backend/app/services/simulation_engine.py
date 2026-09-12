@@ -111,21 +111,10 @@ class SimulationEngine:
             mean_f = np.mean(factors)
             x_power = (p_avg * (factors / mean_f)) if mean_f > 0 else np.full_like(x_slope, p_avg)
         else:
-            # Original pacing from file: smooth out momentary 0W cadence drops (gear shifts/pauses)
-            # using a consistent spatial rolling average over ~30m
-            power_smoothing_distance_m = 30.0
-            w = max(1, int(round(power_smoothing_distance_m / dx)))
-            if w % 2 == 0:
-                w += 1
-            w = min(w, len(x_power_base))
-            if w > 1:
-                kernel = np.ones(w) / float(w)
-                x_power = np.convolve(x_power_base, kernel, mode="same")
-                # Where the rider was truly at a standstill in baseline, keep 0W
-                stopped_mask = x_speed_base < 0.5
-                x_power[stopped_mask] = 0.0
-            else:
-                x_power = x_power_base.copy()
+            # Original pacing from file: preserve exact point-by-point power from FIT
+            x_power = x_power_base.copy()
+            stopped_mask = x_speed_base < 0.5
+            x_power[stopped_mask] = 0.0
 
         # 4. Wind Scenario Modifications
         if request.zero_wind:
@@ -157,10 +146,23 @@ class SimulationEngine:
         t_base_cum = np.concatenate(([0.0], np.cumsum(dt_base)))
         total_base_time = float(t_base_cum[-1])
 
+        # 5. Effective Power Response Model:
+        # Time-domain asymmetric neuromuscular lag filter (tau_up=1.2s, tau_down=2.2s).
+        # Models physical drivetrain and muscular inertia, eliminating unphysical instantaneous force spikes.
+        x_power_effective = PhysicsSolver.smooth_power_response(
+            power=x_power,
+            time_s=t_base_cum,
+            tau_up=1.2,
+            tau_down=2.2,
+        )
+        stopped_mask = x_speed_base < 0.5
+        x_power_effective[stopped_mask] = 0.0
+
         if is_baseline:
             # 1. Baseline scenario: identical conditions to the recorded ride.
             # Deltas must be exactly zero, simulated speed matches baseline speed.
             v_sim = v_base_clean.copy()
+            v_sim_clean = v_base_clean.copy()
             dt_sim = dt_base.copy()
             t_sim_cum = t_base_cum.copy()
             delta_t_cum = np.zeros_like(t_base_cum)
@@ -171,7 +173,7 @@ class SimulationEngine:
             # 2. What-If scenario: continuous distance-domain simulation
             v_initial = float(v_base_clean[0])
             v_sim = PhysicsSolver.simulate_speed_arbitrary_wind(
-                P=x_power,
+                P=x_power_effective,
                 s=x_slope,
                 bearing_deg=x_bearing,
                 wind_speed=sim_wind_speed,
@@ -200,7 +202,7 @@ class SimulationEngine:
             if request.calculate_equivalent_power:
                 eq_power = SimulationEngine._solve_equivalent_power(
                     target_time_s=total_base_time,
-                    base_power=x_power,
+                    base_power=x_power_effective,
                     s=x_slope,
                     bearing_deg=x_bearing,
                     wind_speed=sim_wind_speed,
@@ -213,6 +215,14 @@ class SimulationEngine:
                     dx=dx,
                     v_initial=v_initial,
                 )
+
+        # Compute trajectory acceleration for diagnostic inspection
+        accel_mps2 = np.zeros_like(v_sim_clean)
+        ref_dt = dt_base if is_baseline else dt_sim
+        ref_v = v_base_clean if is_baseline else v_sim_clean
+        for i in range(1, len(ref_v)):
+            seg_dt = max(1e-3, float(ref_dt[i - 1]))
+            accel_mps2[i] = (ref_v[i] - ref_v[i - 1]) / seg_dt
 
         # Build Response
         spatial_points: List[SpatialPoint] = []
@@ -233,8 +243,11 @@ class SimulationEngine:
                     baseline_speed_mps=float(v_base_clean[i]),
                     baseline_speed_kmh=float(v_base_clean[i] * 3.6),
                     delta_time_s=float(delta_t_cum[i]),
+                    power_effective_w=round(float(x_power_effective[i]), 1),
+                    acceleration_mps2=round(float(accel_mps2[i]), 2),
                 )
             )
+
 
         summary = SimulationSummary(
             total_distance_m=float(total_distance),

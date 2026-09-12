@@ -82,6 +82,8 @@ export interface SpatialPoint {
   baseline_speed_mps: number;
   baseline_speed_kmh: number;
   delta_time_s: number;
+  power_effective_w?: number;
+  acceleration_mps2?: number;
 }
 
 export interface SimulationSummary {

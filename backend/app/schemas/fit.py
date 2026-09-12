@@ -169,6 +169,8 @@ class SpatialPoint(BaseModel):
     baseline_speed_mps: float
     baseline_speed_kmh: float
     delta_time_s: float = Field(..., description="Cumulative time gain (+) or loss (-) compared to baseline (seconds)")
+    power_effective_w: Optional[float] = Field(default=None, description="Effective power transferred to drivetrain after inertia lag")
+    acceleration_mps2: Optional[float] = Field(default=None, description="Instantaneous acceleration along trajectory (m/s^2)")
 
 
 class SimulationSummary(BaseModel):

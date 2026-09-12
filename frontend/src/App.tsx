@@ -65,6 +65,8 @@ export const createBaselineSimulationResponse = (
       baseline_speed_mps: p.speed_mps,
       baseline_speed_kmh: p.speed_kmh,
       delta_time_s: 0.0,
+      power_effective_w: p.power_w,
+      acceleration_mps2: 0.0,
     };
   }),
 });

@@ -163,35 +163,84 @@ class SimulationEngine:
             eq_power = float(np.mean([p.power_w for p in clean_points])) if request.calculate_equivalent_power else None
         else:
             # 2. What-If scenario: conditions differ from baseline
-            # Solve steady-state speeds
-            v_sim_raw = PhysicsSolver.solve_speed_arbitrary_wind(
-                P=x_power,
-                s=x_slope,
-                bearing_deg=x_bearing,
-                wind_speed=sim_wind_speed,
-                wind_dir_deg=sim_wind_dir,
-                m=request.mass_kg,
-                CdA=request.cda,
-                Crr=request.crr,
-                rho=x_rho,
-                eta=request.drivetrain_efficiency,
-            )
-
-            # Precalculate apparent wind vectors for dynamic work-energy calculations
             rad_bearing = np.radians(x_bearing)
             rad_sim_wind = np.radians(sim_wind_dir)
             beta_sim = rad_sim_wind - rad_bearing
             sim_w_par = sim_wind_speed * np.cos(beta_sim)
             sim_w_perp = sim_wind_speed * np.sin(beta_sim)
 
-            # Apply double-bounded kinetic energy continuity pass:
-            # Cyclist has mass (m ~ 78kg) and cannot instantaneously accelerate or decelerate!
-            v_sim = np.zeros_like(v_sim_raw)
-            v_last = max(float(v_base_clean[0]), 2.0)
+            rad_base_wind = np.radians(x_wind_dir)
+            beta_base = rad_base_wind - rad_bearing
+            base_w_par = x_wind_speed * np.cos(beta_base)
+            base_w_perp = x_wind_speed * np.sin(beta_base)
+
+            # Baseline apparent wind and aerodynamic drag forces
+            v_head_base = v_base_clean + base_w_par
+            v_app_base = np.sqrt(v_head_base**2 + base_w_perp**2)
+            f_aero_base = 0.5 * x_rho * request.cda * v_app_base * v_head_base
+
+            # Target speed computation
+            if not request.reverse_route and request.pacing_mode == PacingMode.ORIGINAL:
+                # Original pacing: anchor target speed around recorded baseline speed.
+                # Perturb by the physical aerodynamic resistance difference.
+                v_target_arr = np.zeros_like(v_base_clean)
+                for i in range(len(v_base_clean)):
+                    v_b = float(v_base_clean[i])
+                    dw_par = float(sim_w_par[i]) - float(base_w_par[i])
+                    dw_perp = float(sim_w_perp[i]) - float(base_w_perp[i])
+                    if abs(dw_par) < 1e-4 and abs(dw_perp) < 1e-4:
+                        v_target_arr[i] = v_b
+                        continue
+
+                    p_eff = max(float(x_power[i]) * request.drivetrain_efficiency, 25.0)
+                    f_base = float(f_aero_base[i])
+                    v_k = v_b
+
+                    # Newton-Raphson iterations to solve power balance with aerodynamic delta
+                    for _ in range(4):
+                        vh = v_k + float(sim_w_par[i])
+                        va = math.sqrt(max(1e-4, vh**2 + float(sim_w_perp[i])**2))
+                        fa_sim = 0.5 * float(x_rho[i]) * request.cda * va * vh
+                        dfa = fa_sim - f_base
+
+                        f_tot = (p_eff / v_b) + dfa
+                        residual = f_tot * v_k - p_eff
+
+                        dfa_dv = 0.5 * float(x_rho[i]) * request.cda * ((vh / va) * vh + va)
+                        d_res = f_tot + v_k * dfa_dv
+                        if abs(d_res) < 1e-4:
+                            break
+                        v_k = max(0.5, min(18.0, v_k - residual / d_res))
+                    v_target_arr[i] = v_k
+            else:
+                # Synthetic pacing (constant avg or adaptive slope) or reversed route:
+                # Solve steady-state speeds using physics solver
+                v_target_arr = PhysicsSolver.solve_speed_arbitrary_wind(
+                    P=x_power,
+                    s=x_slope,
+                    bearing_deg=x_bearing,
+                    wind_speed=sim_wind_speed,
+                    wind_dir_deg=sim_wind_dir,
+                    m=request.mass_kg,
+                    CdA=request.cda,
+                    Crr=request.crr,
+                    rho=x_rho,
+                    eta=request.drivetrain_efficiency,
+                )
+
+            # Apply physical acceleration and deceleration limits:
+            # Maximum human cycling acceleration: a_max = 1.2 m/s^2
+            # Maximum road bicycle braking deceleration: a_dec = 3.5 m/s^2
+            # Over distance step dx: delta(v^2) = 2 * a * dx
+            max_delta_v2_acc = 2.0 * 1.2 * dx   # for dx=5m -> 12.0 (m/s)^2
+            max_delta_v2_dec = 2.0 * 3.5 * dx   # for dx=5m -> 35.0 (m/s)^2
+
+            v_sim = np.zeros_like(v_target_arr)
+            v_last = max(float(v_base_clean[0]), 1.5)
             m_kg = request.mass_kg
             g_acc = settings.GRAVITY
 
-            for i in range(len(v_sim_raw)):
+            for i in range(len(v_target_arr)):
                 # Driving force (pedaling + downhill gravity component)
                 p_eff = float(x_power[i]) * request.drivetrain_efficiency
                 f_pedal = p_eff / max(v_last, 1.5)
@@ -207,30 +256,27 @@ class SimulationEngine:
                 f_resist = f_aero + f_rr + f_uphill
 
                 # Net work done over distance step dx:
-                # Delta(v^2) = (2 * dx / m) * (F_drive - F_resist)
                 net_work = (2.0 * dx / m_kg) * (f_drive - f_resist)
 
-                # Upper bound on acceleration (cannot exceed work done):
-                v_max_step = math.sqrt(max(0.25, v_last**2 + max(0.0, net_work)))
-                # Lower bound on deceleration (cannot stop faster than total resistance work):
-                v_min_step = math.sqrt(max(0.25, v_last**2 + min(0.0, net_work)))
+                # Kinetic energy bounds with physical acceleration limits
+                delta_v2_pos = min(max(0.0, net_work), max_delta_v2_acc)
+                v_max_step = math.sqrt(max(0.25, v_last**2 + delta_v2_pos))
 
-                # Steady-state target speed from physics solver:
-                v_target = float(v_sim_raw[i])
+                delta_v2_neg = max(min(0.0, net_work), -max_delta_v2_dec)
+                v_min_step = math.sqrt(max(0.25, v_last**2 + delta_v2_neg))
+
+                v_target = float(v_target_arr[i])
 
                 # Downhill braking / cornering safety ceiling:
-                # If on a steep descent (s < -1.5%) and coasting (P < 30W), cyclists control speed via brakes.
-                # In non-reversed original pacing, the rider's baseline speed v_base reflects their safe road handling.
                 if not request.reverse_route and request.pacing_mode == PacingMode.ORIGINAL and x_slope[i] < -0.015 and x_power[i] < 30.0:
-                    # Allow slight aero perturbation around baseline descent speed (+/- 1.5 m/s), capped at 65 km/h (18 m/s)
-                    v_safe_descent = min(18.0, float(v_base_clean[i]) + 1.5)
+                    v_safe_descent = min(17.5, float(v_base_clean[i]) + 1.5)
                     v_target = min(v_target, v_safe_descent)
                 else:
-                    # General road safety ceiling for bicycles (72 km/h = 20 m/s)
-                    v_target = min(v_target, 20.0)
+                    v_target = min(v_target, 18.0)
 
                 # Bounded speed evolution
                 v_curr = min(v_max_step, max(v_min_step, v_target))
+                v_curr = min(v_curr, 18.0)
                 v_sim[i] = v_curr
                 v_last = v_curr
 
@@ -343,6 +389,9 @@ class SimulationEngine:
             v_dyn = np.zeros_like(v_raw)
             v_last = max(float(v_base_clean[0]) if v_base_clean is not None else float(v_raw[0]), 2.0)
 
+            max_delta_v2_acc = 2.0 * 1.2 * dx
+            max_delta_v2_dec = 2.0 * 3.5 * dx
+
             for i in range(len(v_raw)):
                 p_eff = float(p_trial[i]) * eta
                 f_pedal = p_eff / max(v_last, 1.5)
@@ -357,14 +406,18 @@ class SimulationEngine:
                 f_resist = f_aero + f_rr + f_uphill
 
                 net_work = (2.0 * dx / mass_kg) * (f_drive - f_resist)
-                v_max_step = math.sqrt(max(0.25, v_last**2 + max(0.0, net_work)))
-                v_min_step = math.sqrt(max(0.25, v_last**2 + min(0.0, net_work)))
+                delta_v2_pos = min(max(0.0, net_work), max_delta_v2_acc)
+                v_max_step = math.sqrt(max(0.25, v_last**2 + delta_v2_pos))
 
-                v_target = min(float(v_raw[i]), 20.0)
+                delta_v2_neg = max(min(0.0, net_work), -max_delta_v2_dec)
+                v_min_step = math.sqrt(max(0.25, v_last**2 + delta_v2_neg))
+
+                v_target = min(float(v_raw[i]), 18.0)
                 if v_base_clean is not None and s[i] < -0.015 and p_trial[i] < 30.0:
-                    v_target = min(v_target, min(18.0, float(v_base_clean[i]) + 1.5))
+                    v_target = min(v_target, min(17.5, float(v_base_clean[i]) + 1.5))
 
                 v_curr = min(v_max_step, max(v_min_step, v_target))
+                v_curr = min(v_curr, 18.0)
                 v_dyn[i] = v_curr
                 v_last = v_curr
 

@@ -29,6 +29,46 @@ import {
   resetAdvancedParams,
 } from './utils/storage';
 
+// Helper to create an exact 0-delta baseline simulation directly from processed FIT data
+export const createBaselineSimulationResponse = (
+  processed: FitProcessResponse
+): WhatIfSimulationResponse => ({
+  summary: {
+    total_distance_m: processed.summary.total_distance_m,
+    baseline_time_s: processed.summary.duration_s,
+    simulated_time_s: processed.summary.duration_s,
+    time_delta_s: 0.0,
+    baseline_avg_speed_kmh: processed.summary.avg_speed_kmh,
+    simulated_avg_speed_kmh: processed.summary.avg_speed_kmh,
+    equivalent_power_w: processed.summary.avg_power_w,
+    pacing_mode: 'original',
+    reverse_route: false,
+    wind_scenario: 'Warunki bazowe (zgodne z plikiem)',
+  },
+  spatial_points: processed.points.map((p, i, arr) => {
+    const prev = i > 0 ? arr[i - 1] : null;
+    const dDist = prev ? p.distance_m - prev.distance_m : 0;
+    const slope = prev && dDist > 0.1 ? (p.elevation_m - prev.elevation_m) / dDist : 0.0;
+
+    return {
+      distance_m: p.distance_m,
+      lat: p.lat,
+      lon: p.lon,
+      elevation_m: p.elevation_m,
+      slope: slope,
+      bearing_deg: p.bearing_deg,
+      power_w: p.power_w,
+      wind_speed_mps: p.wind_speed_cyclist_mps,
+      wind_dir_deg: p.wind_direction_deg,
+      simulated_speed_mps: p.speed_mps,
+      simulated_speed_kmh: p.speed_kmh,
+      baseline_speed_mps: p.speed_mps,
+      baseline_speed_kmh: p.speed_kmh,
+      delta_time_s: 0.0,
+    };
+  }),
+});
+
 export const App: React.FC = () => {
   const [isBackendOnline, setIsBackendOnline] = useState<boolean>(false);
   const [isCheckingBackend, setIsCheckingBackend] = useState<boolean>(true);
@@ -162,21 +202,8 @@ export const App: React.FC = () => {
       };
       setConfig(newConfig);
 
-      // 2. Run initial simulation (guaranteed exact baseline: time delta = 0s)
-      const sim = await runSimulation(file, {
-        massKg: newConfig.massKg,
-        cda: newConfig.cda,
-        crr: newConfig.crr,
-        drivetrainEfficiency: newConfig.eta,
-        spatialStepM: 5.0,
-        zeroWind: false,
-        windScaleFactor: 1.0,
-        windRotationDeg: 0.0,
-        reverseRoute: false,
-        pacingMode: 'original',
-        calculateEquivalentPower: true,
-      });
-      setSimulationData(sim);
+      // 2. Set initial simulation data (guaranteed exact baseline: time delta = 0.0s)
+      setSimulationData(createBaselineSimulationResponse(processed));
 
       // 3. Estimate CdA in background for modal inspection without wiping custom user settings
       estimateChungCdA(file, {
@@ -214,7 +241,7 @@ export const App: React.FC = () => {
   };
 
   // Reset weather to exact baseline and immediately update simulation deltas to 0.0
-  const handleResetWeather = useCallback(async () => {
+  const handleResetWeather = useCallback(() => {
     if (!processData) return;
     const baseSpeed = processData.weather_summary.avg_wind_speed_cyclist_mps;
     const baseDir = processData.weather_summary.dominant_wind_dir_deg;
@@ -231,27 +258,7 @@ export const App: React.FC = () => {
     setConfig(resetConf);
 
     if (activeFile) {
-      setIsSimulating(true);
-      try {
-        const sim = await runSimulation(activeFile, {
-          massKg: resetConf.massKg,
-          cda: resetConf.cda,
-          crr: resetConf.crr,
-          drivetrainEfficiency: resetConf.eta,
-          spatialStepM: 5.0,
-          zeroWind: false,
-          windScaleFactor: 1.0,
-          windRotationDeg: 0.0,
-          reverseRoute: false,
-          pacingMode: 'original',
-          calculateEquivalentPower: true,
-        });
-        setSimulationData(sim);
-      } catch (err) {
-        console.error('Failed to reset simulation to baseline:', err);
-      } finally {
-        setIsSimulating(false);
-      }
+      setSimulationData(createBaselineSimulationResponse(processData));
     } else {
       // Demo route baseline reset
       setSimulationData(demoSimulationResponse);
@@ -278,10 +285,13 @@ export const App: React.FC = () => {
           !config.reverseRoute &&
           config.pacingMode === 'original';
 
-        const scaleFactor = isBaselineWeather
-          ? 1.0
-          : baseSpeed > 0 ? config.windSpeedMps / baseSpeed : 1.0;
-        const finalRotDeg = isBaselineWeather ? 0.0 : rotDeg;
+        if (isBaselineWeather) {
+          setSimulationData(createBaselineSimulationResponse(processData));
+          return;
+        }
+
+        const scaleFactor = baseSpeed > 0 ? config.windSpeedMps / baseSpeed : 1.0;
+        const finalRotDeg = rotDeg;
 
         const res = await runSimulation(activeFile, {
           massKg: config.massKg,

@@ -292,3 +292,94 @@ def test_simulation_downhill_no_speed_jump():
     assert max_sim_speed < 60.0
 
 
+def test_simulation_sprint_power_bounded_and_no_explosive_speed_jump():
+    """
+    Regression test: a 1035W sprint on a -6.2% gradient with baseline speed 33.7 km/h -> 43 km/h
+    must NOT explode to 81.3 km/h and must NOT jump 30+ km/h over 50 meters.
+    """
+    base_time = datetime(2023, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
+    points: list[EnrichedPoint] = []
+
+    # 40 points (400m): approach at 33.7 km/h (9.36 m/s), 220W, s = -6.2%
+    for i in range(40):
+        dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
+        elev = 200.0 - i * 0.62  # -6.2% grade
+        points.append(
+            EnrichedPoint(
+                time_offset_s=i,
+                timestamp=dt,
+                lat=52.0 + i * 0.0001,
+                lon=21.0,
+                elevation_m=elev,
+                distance_m=i * 10.0,
+                speed_mps=9.36,  # 33.7 km/h
+                speed_kmh=33.7,
+                power_w=220.0,
+                bearing_deg=0.0,
+                temp_c=20.0,
+                surface_pressure_hpa=1013.25,
+                surface_pressure_pa=101325.0,
+                wind_speed_10m_mps=3.0,
+                wind_speed_cyclist_mps=1.9,
+                wind_direction_deg=180.0,  # Tailwind
+                air_density_kg_m3=1.20,
+                yaw_angle_deg=0.0,
+                headwind_comp_mps=-1.9,
+                crosswind_comp_mps=0.0,
+                apparent_wind_speed_mps=7.46,
+                apparent_wind_angle_deg=0.0,
+            )
+        )
+
+    # 10 points (100m): 1035W sprint, baseline speed accelerates to 43.0 km/h (11.94 m/s)
+    for i in range(40, 50):
+        dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
+        elev = 200.0 - i * 0.62
+        points.append(
+            EnrichedPoint(
+                time_offset_s=i,
+                timestamp=dt,
+                lat=52.0 + i * 0.0001,
+                lon=21.0,
+                elevation_m=elev,
+                distance_m=i * 10.0,
+                speed_mps=11.94,  # 43.0 km/h
+                speed_kmh=43.0,
+                power_w=1035.0,  # 1035W sprint
+                bearing_deg=0.0,
+                temp_c=20.0,
+                surface_pressure_hpa=1013.25,
+                surface_pressure_pa=101325.0,
+                wind_speed_10m_mps=3.0,
+                wind_speed_cyclist_mps=1.9,
+                wind_direction_deg=180.0,
+                air_density_kg_m3=1.20,
+                yaw_angle_deg=0.0,
+                headwind_comp_mps=-1.9,
+                crosswind_comp_mps=0.0,
+                apparent_wind_speed_mps=10.04,
+                apparent_wind_angle_deg=0.0,
+            )
+        )
+
+    # Simulate What-If with Zero Wind
+    req = WhatIfSimulationRequest(
+        zero_wind=True,
+        spatial_step_m=5.0,
+        pacing_mode=PacingMode.ORIGINAL,
+    )
+    res = SimulationEngine.run_simulation(points, req)
+
+    sim_speeds = [sp.simulated_speed_kmh for sp in res.spatial_points]
+    max_sim_speed = max(sim_speeds)
+
+    # 1. Max simulated speed must NOT reach 81.3 km/h or anything above 55 km/h
+    assert max_sim_speed < 55.0, f"Max speed {max_sim_speed:.1f} km/h exceeded realistic threshold"
+
+    # 2. Acceleration check: over any 50m window (10 spatial steps of 5m), speed delta cannot exceed 18 km/h
+    for k in range(len(sim_speeds) - 10):
+        delta_50m = sim_speeds[k + 10] - sim_speeds[k]
+        assert delta_50m < 18.0, f"Speed jump {delta_50m:.1f} km/h over 50m exceeded physical limit"
+
+
+

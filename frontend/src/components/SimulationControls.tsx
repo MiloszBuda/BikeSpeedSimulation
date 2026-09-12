@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
-  Save,
 } from 'lucide-react';
 import { WindCompass } from './WindCompass';
 import { Tooltip } from './Tooltip';
@@ -113,18 +112,19 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         {/* Right Column: Speed, Toggles, and Route Reversal */}
         <div className="flex flex-col gap-3 min-w-0">
           {/* Toggle On/Off Zero Wind */}
-          <div className="flex items-center justify-between p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className={`p-2 rounded-lg shrink-0 ${
-                  config.zeroWind ? 'bg-rose-500/15 text-rose-400' : 'bg-teal-500/15 text-teal-400'
-                }`}
-              >
-                {config.zeroWind ? <CloudOff className="w-4 h-4" /> : <Wind className="w-4 h-4" />}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-slate-200 truncate">
+          <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2.5">
+            {/* Line 1: Clear Description & Status */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className={`p-1.5 rounded-md shrink-0 ${
+                    config.zeroWind ? 'bg-rose-500/15 text-rose-400' : 'bg-teal-500/15 text-teal-400'
+                  }`}
+                >
+                  {config.zeroWind ? <CloudOff className="w-4 h-4" /> : <Wind className="w-4 h-4" />}
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-semibold text-slate-200 whitespace-nowrap">
                     Symulacja bezwietrzna
                   </span>
                   <Tooltip
@@ -134,34 +134,37 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                     position="bottom"
                   />
                 </div>
-                <span className="text-[11px] text-slate-400 block truncate">
-                  {config.zeroWind ? 'Wyciszenie (0 m/s na trasie)' : 'Wiatr aktywny'}
-                </span>
               </div>
+              <span className="text-[11px] text-slate-400 shrink-0 font-mono">
+                {config.zeroWind ? '0 m/s na trasie' : 'Wiatr aktywny'}
+              </span>
             </div>
+
+            {/* Line 2: Setting Option Underneath */}
             <button
               type="button"
               onClick={() => update({ zeroWind: !config.zeroWind })}
-              className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all shrink-0 active:scale-95 ${
+              className={`w-full py-1.5 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
                 config.zeroWind
                   ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
                   : 'bg-teal-500/20 text-teal-300 border border-teal-500/40 hover:bg-teal-500/30'
               }`}
             >
-              {config.zeroWind ? 'BEZ WIATRU' : 'Z WIATREM'}
+              {config.zeroWind ? 'BEZ WIATRU (WYCISZENIE)' : 'Z WIATREM (WARUNKI REALNE)'}
             </button>
           </div>
 
           {/* Wind Speed Slider & Input */}
           <div
-            className={`p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 transition-opacity ${
+            className={`p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2 transition-opacity ${
               config.zeroWind ? 'opacity-40 pointer-events-none' : ''
             }`}
           >
-            <div className="flex justify-between items-center gap-2 mb-2">
+            {/* Line 1: Clear Description & Values */}
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 min-w-0">
-                <label className="text-xs font-semibold text-slate-300 truncate">
-                  Prędkość wiatru
+                <label className="text-xs font-semibold text-slate-200 whitespace-nowrap">
+                  Prędkość wiatru przy kolarzu
                 </label>
                 <Tooltip
                   title="Prędkość wiatru przy kolarzu"
@@ -186,37 +189,42 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 </span>
               </div>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="15"
-              step="0.1"
-              value={config.windSpeedMps}
-              onChange={(e) => update({ windSpeedMps: parseFloat(e.target.value) })}
-              className="w-full accent-teal-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400 mt-1.5 font-mono px-0.5">
-              <span>0 m/s</span>
-              <span>5 m/s</span>
-              <span>10 m/s</span>
-              <span>15 m/s</span>
+
+            {/* Line 2: Setting Option (Slider & Ticks) Underneath */}
+            <div className="pt-1">
+              <input
+                type="range"
+                min="0"
+                max="15"
+                step="0.1"
+                value={config.windSpeedMps}
+                onChange={(e) => update({ windSpeedMps: parseFloat(e.target.value) })}
+                className="w-full accent-teal-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
+              />
+              <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-mono px-0.5">
+                <span>0 m/s</span>
+                <span>5 m/s</span>
+                <span>10 m/s</span>
+                <span>15 m/s</span>
+              </div>
             </div>
           </div>
 
           {/* Route Reversal Toggle */}
-          <div className="flex items-center justify-between p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className={`p-2 rounded-lg shrink-0 ${
-                  config.reverseRoute ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-400'
-                }`}
-              >
-                <ArrowRightLeft className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-slate-200 truncate">
-                    Odwróć trasę
+          <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2.5">
+            {/* Line 1: Clear Description & Status */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className={`p-1.5 rounded-md shrink-0 ${
+                    config.reverseRoute ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  <ArrowRightLeft className="w-4 h-4" />
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-semibold text-slate-200 whitespace-nowrap">
+                    Odwrócenie trasy („Jazda pod prąd”)
                   </span>
                   <Tooltip
                     title="Odwróć trasę („Jazda pod prąd”)"
@@ -225,21 +233,23 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                     position="bottom"
                   />
                 </div>
-                <span className="text-[11px] text-slate-400 block truncate">
-                  {config.reverseRoute ? 'Podjazdy stają się zjazdami' : 'Zgodnie z zapisem GPS'}
-                </span>
               </div>
+              <span className="text-[11px] text-slate-400 shrink-0 font-mono">
+                {config.reverseRoute ? 'Podjazdy to zjazdy' : 'Zgodnie z GPS'}
+              </span>
             </div>
+
+            {/* Line 2: Setting Option Underneath */}
             <button
               type="button"
               onClick={() => update({ reverseRoute: !config.reverseRoute })}
-              className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all shrink-0 active:scale-95 ${
+              className={`w-full py-1.5 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
                 config.reverseRoute
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                  : 'bg-slate-800 text-slate-300 hover:text-slate-100 border border-slate-700'
               }`}
             >
-              {config.reverseRoute ? 'ODWRÓCONA' : 'NORMALNA'}
+              {config.reverseRoute ? 'ODWRÓCONA (JAZDA OD KOŃCA DO POCZĄTKU)' : 'NORMALNA (ZGODNIE Z KIERUNKIEM GPS)'}
             </button>
           </div>
         </div>
@@ -319,23 +329,15 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             <span>Zaawansowane parametry kolarza i sprzętu (Masa, CdA, Crr, Sprawność)</span>
             {showAdvanced ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
           </button>
-          {showAdvanced && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-emerald-400/90 flex items-center gap-1 bg-emerald-950/40 border border-emerald-800/50 px-2 py-0.5 rounded">
-                <Save className="w-2.5 h-2.5" />
-                <span>Zapisywane w pamięci (localStorage)</span>
-              </span>
-              {onResetAdvancedDefaults && (
-                <button
-                  type="button"
-                  onClick={onResetAdvancedDefaults}
-                  className="text-[10px] text-slate-400 hover:text-slate-200 underline"
-                  title="Przywróć domyślne parametry (78kg, 0.32, 0.004, 0.97)"
-                >
-                  Domyślne
-                </button>
-              )}
-            </div>
+          {showAdvanced && onResetAdvancedDefaults && (
+            <button
+              type="button"
+              onClick={onResetAdvancedDefaults}
+              className="text-[11px] text-slate-400 hover:text-teal-300 underline transition-colors px-1"
+              title="Przywróć domyślne parametry (78kg, 0.32, 0.004, 0.97)"
+            >
+              Przywróć domyślne
+            </button>
           )}
         </div>
 

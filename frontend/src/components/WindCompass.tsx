@@ -87,10 +87,10 @@ export const WindCompass: React.FC<WindCompassProps> = ({
 
   return (
     <div className="flex flex-col items-center select-none">
-      <div className="flex items-center justify-between w-full mb-2">
-        <div className="flex items-center gap-1.5">
-          <Compass className="w-4 h-4 text-teal-400" />
-          <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+      <div className="flex items-center justify-between w-full mb-2.5 gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Compass className="w-4 h-4 text-teal-400 shrink-0" />
+          <span className="text-xs font-semibold text-slate-200 whitespace-nowrap">
             Kierunek wiatru
           </span>
           <Tooltip
@@ -100,11 +100,11 @@ export const WindCompass: React.FC<WindCompassProps> = ({
             position="right"
           />
         </div>
-        <div className="text-right">
-          <span className="text-sm font-bold text-teal-300 font-mono">
+        <div className="text-right shrink-0 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded font-mono">
+          <span className="text-xs font-bold text-teal-300">
             {Math.round(angle)}°
           </span>
-          <span className="text-xs text-slate-400 ml-1">
+          <span className="text-[11px] text-slate-400 ml-1">
             ({cardinal.label})
           </span>
         </div>

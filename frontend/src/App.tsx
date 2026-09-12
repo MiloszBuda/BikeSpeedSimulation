@@ -149,9 +149,22 @@ export const App: React.FC = () => {
         });
         setSimulationData(res);
       } else {
+        const isBaseline =
+          !config.zeroWind &&
+          Math.abs(config.windSpeedMps - demoProcessResponse.weather_summary.avg_wind_speed_cyclist_mps) < 0.1 &&
+          Math.abs(config.windDirDeg - demoProcessResponse.weather_summary.dominant_wind_dir_deg) < 1.0 &&
+          !config.reverseRoute &&
+          config.pacingMode === 'original';
+
+        if (isBaseline) {
+          setSimulationData(demoSimulationResponse);
+          return;
+        }
+
         // Client-side simulation solver for Demo mode / GitHub Pages
         const srcPoints = demoSimulationResponse.spatial_points;
         const baseSpeed = 32.4 / 3.6;
+        const baseWind = demoProcessResponse.weather_summary.avg_wind_speed_cyclist_mps;
 
         const updatedPoints = srcPoints.map((p, idx) => {
           const bearing = config.reverseRoute ? (p.bearing_deg + 180) % 360 : p.bearing_deg;
@@ -160,14 +173,16 @@ export const App: React.FC = () => {
           // Relative wind
           const beta = (config.windDirDeg - bearing + 360) % 360;
           const headwind = config.zeroWind ? 0 : config.windSpeedMps * Math.cos((beta * Math.PI) / 180);
-          const crosswind = config.zeroWind ? 0 : config.windSpeedMps * Math.sin((beta * Math.PI) / 180);
 
-          // Approximate speed adjustment
-          const aeroDelta = headwind * 0.45;
-          const slopeDelta = slope * 70.0;
-          const simV = Math.max(2.0, baseSpeed - aeroDelta - slopeDelta);
+          // Realistic speed adjustment (bounded between 15 km/h and 65 km/h)
+          const aeroDelta = (headwind - (baseWind * 0.3)) * 0.35;
+          const slopeDelta = slope * 25.0;
+          const simV = Math.max(4.2, Math.min(18.0, baseSpeed - aeroDelta - slopeDelta));
 
-          const timeGain = (idx / srcPoints.length) * (config.zeroWind ? 52.0 : -headwind * 15.0);
+          const fraction = idx / srcPoints.length;
+          const timeGain = config.zeroWind
+            ? fraction * 48.0
+            : fraction * (- (config.windSpeedMps - baseWind) * 12.0);
 
           return {
             ...p,
@@ -181,25 +196,27 @@ export const App: React.FC = () => {
 
         const pacingBonusSec =
           config.pacingMode === 'adaptive_slope' ? 18.0 : config.pacingMode === 'constant_avg' ? -3.0 : 0.0;
-        const windPenaltySec = config.zeroWind ? -52.0 : config.windSpeedMps * 6.5;
-        const timeDelta = -(windPenaltySec - pacingBonusSec); // positive = faster (saved time), negative = slower
+        const windDeltaSec = config.zeroWind
+          ? 48.0
+          : -(config.windSpeedMps - baseWind) * 14.0;
+        const timeDelta = windDeltaSec + pacingBonusSec; // positive = faster (saved time), negative = slower
         const totalSimTime = demoSimulationResponse.summary.baseline_time_s - timeDelta;
 
         const basePower = demoProcessResponse.summary.avg_power_w;
         const equivPower = config.zeroWind
-          ? Math.max(180, basePower - 18)
-          : basePower + config.windSpeedMps * 6.8;
+          ? Math.max(180, basePower - 14)
+          : basePower + (config.windSpeedMps - baseWind) * 6.5;
 
         setSimulationData({
           summary: {
             ...demoSimulationResponse.summary,
             simulated_time_s: totalSimTime,
-            time_delta_s: timeDelta,
+            time_delta_s: parseFloat(timeDelta.toFixed(1)),
             simulated_avg_speed_kmh: (demoSimulationResponse.summary.total_distance_m / totalSimTime) * 3.6,
             equivalent_power_w: Math.round(equivPower),
             pacing_mode: config.pacingMode,
             reverse_route: config.reverseRoute,
-            wind_scenario: config.zeroWind ? 'Zero Wind' : `Wind ${config.windSpeedMps} m/s @ ${config.windDirDeg}°`,
+            wind_scenario: config.zeroWind ? 'Zero Wind (Calm)' : `Wind ${config.windSpeedMps} m/s @ ${config.windDirDeg}°`,
           },
           spatial_points: updatedPoints,
         });

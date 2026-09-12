@@ -171,3 +171,104 @@ def test_simulation_coasting_and_equivalent_power_realistic():
     assert res.summary.equivalent_power_w is not None
     assert 100.0 < res.summary.equivalent_power_w < 300.0
 
+
+def test_simulation_baseline_produces_exact_zero_delta():
+    """Verify that simulating with baseline parameters produces exactly 0.0 delta and identical times."""
+    points = make_test_enriched_track(n_points=60)
+    req = WhatIfSimulationRequest(
+        zero_wind=False,
+        wind_scale_factor=1.0,
+        wind_rotation_deg=0.0,
+        reverse_route=False,
+        pacing_mode=PacingMode.ORIGINAL,
+        spatial_step_m=5.0,
+        calculate_equivalent_power=True,
+    )
+    res = SimulationEngine.run_simulation(points, req)
+
+    assert math.isclose(res.summary.time_delta_s, 0.0, abs_tol=1e-5)
+    assert math.isclose(res.summary.simulated_time_s, res.summary.baseline_time_s, abs_tol=1e-5)
+    for sp in res.spatial_points:
+        assert math.isclose(sp.delta_time_s, 0.0, abs_tol=1e-5)
+        assert math.isclose(sp.simulated_speed_kmh, sp.baseline_speed_kmh, abs_tol=1e-3)
+
+
+def test_simulation_downhill_no_speed_jump():
+    """Regression test: on a -5.6% downhill with 0W, speed must NOT jump to 92 km/h."""
+    base_time = datetime(2023, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
+    points: list[EnrichedPoint] = []
+
+    # 1 km approach flat at 36 km/h (10 m/s), 200W
+    for i in range(100):
+        dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
+        points.append(
+            EnrichedPoint(
+                time_offset_s=i,
+                timestamp=dt,
+                lat=52.0 + i * 0.0001,
+                lon=21.0,
+                elevation_m=200.0,
+                distance_m=i * 10.0,
+                speed_mps=10.0,
+                speed_kmh=36.0,
+                power_w=200.0,
+                bearing_deg=0.0,
+                temp_c=20.0,
+                surface_pressure_hpa=1013.25,
+                surface_pressure_pa=101325.0,
+                wind_speed_10m_mps=3.0,
+                wind_speed_cyclist_mps=2.0,
+                wind_direction_deg=90.0,
+                air_density_kg_m3=1.20,
+                yaw_angle_deg=0.0,
+                headwind_comp_mps=0.0,
+                crosswind_comp_mps=2.0,
+                apparent_wind_speed_mps=10.0,
+                apparent_wind_angle_deg=0.0,
+            )
+        )
+
+    # 500m steep descent at -5.6%, 0W, baseline speed controlled to 35.8 km/h
+    for i in range(100, 150):
+        dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
+        # Drop 5.6m every 100m
+        elev = 200.0 - (i - 100) * 0.56
+        points.append(
+            EnrichedPoint(
+                time_offset_s=i,
+                timestamp=dt,
+                lat=52.0 + i * 0.0001,
+                lon=21.0,
+                elevation_m=elev,
+                distance_m=i * 10.0,
+                speed_mps=9.94,  # 35.8 km/h
+                speed_kmh=35.8,
+                power_w=0.0,
+                bearing_deg=0.0,
+                temp_c=20.0,
+                surface_pressure_hpa=1013.25,
+                surface_pressure_pa=101325.0,
+                wind_speed_10m_mps=3.0,
+                wind_speed_cyclist_mps=2.0,
+                wind_direction_deg=90.0,
+                air_density_kg_m3=1.20,
+                yaw_angle_deg=0.0,
+                headwind_comp_mps=0.0,
+                crosswind_comp_mps=2.0,
+                apparent_wind_speed_mps=9.94,
+                apparent_wind_angle_deg=0.0,
+            )
+        )
+
+    # Simulate with Zero Wind
+    req = WhatIfSimulationRequest(
+        zero_wind=True,
+        spatial_step_m=5.0,
+    )
+    res = SimulationEngine.run_simulation(points, req)
+
+    # Ensure NO point on this descent exceeds 65 km/h (definitely NOT 73.8 or 92 km/h!)
+    max_sim_speed = max(sp.simulated_speed_kmh for sp in res.spatial_points)
+    assert max_sim_speed < 60.0
+
+

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Bike, Award, Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { Bike, Award, Sparkles, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
 
 interface HeaderProps {
   isBackendOnline: boolean;
   isCheckingBackend?: boolean;
+  isBlockedByClient?: boolean;
   onRetryBackend?: () => void;
   onLoadDemo: () => void;
   onOpenChungModal: () => void;
@@ -13,6 +14,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   isBackendOnline,
   isCheckingBackend = false,
+  isBlockedByClient = false,
   onRetryBackend,
   onLoadDemo,
   onOpenChungModal,
@@ -43,12 +45,18 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onRetryBackend}
             disabled={isCheckingBackend}
-            title="Serwer Render (Free Tier) może usypiać po 15 min bezczynności. Kliknij, aby sprawdzić i wybudzić serwer."
+            title={
+              isBlockedByClient
+                ? "Przeglądarka zablokowała zapytanie do serwera (ERR_BLOCKED_BY_CLIENT). Wyłącz wtyczkę Adblock, uBlock Origin lub Brave Shields dla strony miloszbuda.github.io, aby odblokować połączenie z Renderem."
+                : "Serwer Render (Free Tier) może usypiać po 15 min bezczynności. Kliknij, aby sprawdzić i wybudzić serwer."
+            }
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
               isCheckingBackend
                 ? 'bg-amber-950/40 border-amber-800/60 text-amber-300 cursor-wait'
                 : isBackendOnline
                 ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40 cursor-pointer shadow-sm shadow-emerald-950/50'
+                : isBlockedByClient
+                ? 'bg-rose-950/60 border-rose-600/80 text-rose-200 hover:bg-rose-900/60 cursor-pointer shadow-sm shadow-rose-950/50 ring-1 ring-rose-500/40'
                 : 'bg-rose-950/40 border-rose-800/60 text-rose-300 hover:bg-rose-900/40 cursor-pointer shadow-sm shadow-rose-950/50'
             }`}
           >
@@ -61,6 +69,11 @@ export const Header: React.FC<HeaderProps> = ({
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="font-mono text-[11px]">Render Online</span>
+              </>
+            ) : isBlockedByClient ? (
+              <>
+                <ShieldAlert className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                <span className="font-mono text-[11px]">Zablokowane przez Adblock</span>
               </>
             ) : (
               <>

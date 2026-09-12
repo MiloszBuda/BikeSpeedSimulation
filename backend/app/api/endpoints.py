@@ -23,6 +23,8 @@ weather_service = WeatherService()
 
 
 @router.get("/health", summary="Health check")
+@router.get("/ping", summary="Ping check")
+@router.get("/status", summary="Status check")
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "Bike Speed Simulation Backend"}

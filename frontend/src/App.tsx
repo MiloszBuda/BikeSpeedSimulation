@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ShieldAlert } from 'lucide-react';
 import { Header } from './components/Header';
 import { FileUpload } from './components/FileUpload';
 import { SummaryCards } from './components/SummaryCards';
@@ -26,6 +27,7 @@ import {
 export const App: React.FC = () => {
   const [isBackendOnline, setIsBackendOnline] = useState<boolean>(false);
   const [isCheckingBackend, setIsCheckingBackend] = useState<boolean>(true);
+  const [isBlockedByClient, setIsBlockedByClient] = useState<boolean>(false);
   const [activeFile, setActiveFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string>('Trasa demonstracyjna (12 km loop)');
   const [isProcessingFile, setIsProcessingFile] = useState<boolean>(false);
@@ -58,10 +60,11 @@ export const App: React.FC = () => {
   // Manual retry handler for header button
   const handleRetryBackend = useCallback(async () => {
     setIsCheckingBackend(true);
-    const online = await checkBackendHealth(15000);
-    setIsBackendOnline(online);
+    const res = await checkBackendHealth(15000);
+    setIsBackendOnline(res.online);
+    setIsBlockedByClient(!res.online && res.blockedByClient);
     setIsCheckingBackend(false);
-    if (online) {
+    if (res.online) {
       setFileError(null);
     }
   }, []);
@@ -74,13 +77,14 @@ export const App: React.FC = () => {
 
     const ping = async (isManual = false) => {
       if (isManual) setIsCheckingBackend(true);
-      const online = await checkBackendHealth(12000);
+      const res = await checkBackendHealth(12000);
       if (!isMounted) return;
-      setIsBackendOnline(online);
+      setIsBackendOnline(res.online);
+      setIsBlockedByClient(!res.online && res.blockedByClient);
       setIsCheckingBackend(false);
 
       // Progressive backoff ping to catch Render waking up (free tier cold start takes ~15-25s)
-      if (!online && attempt < 4 && !isManual) {
+      if (!res.online && attempt < 4 && !isManual && !res.blockedByClient) {
         attempt++;
         const delays = [3000, 6000, 10000, 15000];
         retryTimer = setTimeout(() => ping(false), delays[attempt - 1] || 15000);
@@ -113,6 +117,7 @@ export const App: React.FC = () => {
       const processed = await processFitFile(file);
       setProcessData(processed);
       setIsBackendOnline(true);
+      setIsBlockedByClient(false);
 
       // Update default config with weather from this ride
       const newConfig: SimulationConfig = {
@@ -152,14 +157,22 @@ export const App: React.FC = () => {
 
     } catch (err: any) {
       console.error('FIT processing error:', err);
-      const online = await checkBackendHealth(5000);
-      setIsBackendOnline(online);
-      if (!online) {
-        setFileError(
-          'Nie udało się połączyć z backendem Render (https://bikespeedsimulation.onrender.com). ' +
-          'Darmowy serwer Render usypia po 15 min bezczynności — pierwsze wybudzenie trwa ~20 sekund. ' +
-          'Sprawdź status w nagłówku lub kliknij przycisk połączenia i spróbuj ponownie za moment.'
-        );
+      const res = await checkBackendHealth(5000);
+      setIsBackendOnline(res.online);
+      setIsBlockedByClient(!res.online && res.blockedByClient);
+      if (!res.online) {
+        if (res.blockedByClient) {
+          setFileError(
+            'Zapytanie do backendu zostało zablokowane przez Twoją przeglądarkę (ERR_BLOCKED_BY_CLIENT). ' +
+            'Wyłącz wtyczkę Adblock, uBlock Origin lub Brave Shields dla strony miloszbuda.github.io i spróbuj ponownie.'
+          );
+        } else {
+          setFileError(
+            'Nie udało się połączyć z backendem Render (https://bikespeedsimulation.onrender.com). ' +
+            'Darmowy serwer Render usypia po 15 min bezczynności — pierwsze wybudzenie trwa ~20 sekund. ' +
+            'Sprawdź status w nagłówku lub kliknij przycisk połączenia i spróbuj ponownie za moment.'
+          );
+        }
       } else {
         setFileError(err.message || 'Wystąpił błąd podczas przetwarzania pliku FIT.');
       }
@@ -303,6 +316,7 @@ export const App: React.FC = () => {
       <Header
         isBackendOnline={isBackendOnline}
         isCheckingBackend={isCheckingBackend}
+        isBlockedByClient={isBlockedByClient}
         onRetryBackend={handleRetryBackend}
         onLoadDemo={handleLoadDemo}
         onOpenChungModal={() => setIsChungModalOpen(true)}
@@ -311,6 +325,33 @@ export const App: React.FC = () => {
 
       {/* Main Workspace Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
+        {/* Adblock / Client Blocked Notification Banner */}
+        {isBlockedByClient && (
+          <div className="bg-rose-950/80 border-2 border-rose-500/80 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-rose-200 text-xs shadow-xl backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="block text-rose-100 font-semibold text-sm mb-1">
+                  Wykryto blokadę rozszerzenia przeglądarki (net::ERR_BLOCKED_BY_CLIENT)
+                </strong>
+                <p className="text-rose-300 leading-relaxed">
+                  Twoje rozszerzenie blokujące reklamy lub skrypty śledzące (np. <b>uBlock Origin</b>, <b>AdBlock</b>, <b>AdGuard</b> lub <b>Brave Shields</b>) zablokowało komunikację z serwerem obliczeniowym Render.
+                </p>
+                <div className="mt-2 text-rose-200">
+                  👉 <b>Rozwiązanie:</b> Kliknij ikonę Adblocka / tarczy na pasku przeglądarki i <b>wyłącz blokowanie dla strony miloszbuda.github.io</b>, a następnie kliknij przycisk obok.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleRetryBackend}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg shadow transition-all active:scale-95 shrink-0"
+            >
+              Sprawdź ponownie
+            </button>
+          </div>
+        )}
+
         {/* File Upload Zone */}
         <FileUpload
           onFileSelected={handleFileSelected}

@@ -7,24 +7,39 @@ import {
 export const DEFAULT_API_URL = 'https://bikespeedsimulation.onrender.com';
 export const API_BASE = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
 
-export async function checkBackendHealth(timeoutMs: number = 10000): Promise<boolean> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+export interface HealthStatus {
+  online: boolean;
+  blockedByClient: boolean;
+  error?: string;
+}
 
-  try {
-    const res = await fetch(`${API_BASE}/health`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    return res.ok;
-  } catch (err) {
-    clearTimeout(timer);
-    console.warn(`[Backend Health Check (${API_BASE})] error:`, err);
-    return false;
+export async function checkBackendHealth(timeoutMs: number = 10000): Promise<HealthStatus> {
+  // Try /health first, then /ping if failed
+  for (const endpoint of ['/health', '/ping']) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        return { online: true, blockedByClient: false };
+      }
+    } catch (err: any) {
+      clearTimeout(timer);
+      console.warn(`[Backend Health Check (${API_BASE}${endpoint})] error:`, err);
+    }
   }
+
+  return {
+    online: false,
+    blockedByClient: true,
+  };
 }
 
 export async function processFitFile(

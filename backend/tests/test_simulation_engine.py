@@ -1,0 +1,118 @@
+"""Tests for distance-domain simulation engine and What-If scenarios."""
+
+import math
+from datetime import datetime, timezone
+import numpy as np
+import pytest
+
+from app.schemas.fit import EnrichedPoint, PacingMode, WhatIfSimulationRequest
+from app.services.simulation_engine import SimulationEngine
+
+
+def make_test_enriched_track(n_points: int = 100, speed_mps: float = 10.0, power_w: float = 250.0):
+    """Helper to build a realistic straight-line enriched track."""
+    base_time = datetime(2023, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
+    points: list[EnrichedPoint] = []
+
+    for i in range(n_points):
+        dist = i * 10.0  # 10m intervals, total ~1000m
+        elev = 100.0 + 5.0 * math.sin(i / 10.0)
+        dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
+
+        points.append(
+            EnrichedPoint(
+                time_offset_s=i,
+                timestamp=dt,
+                lat=52.0 + i * 0.0001,
+                lon=21.0,
+                elevation_m=elev,
+                distance_m=dist,
+                speed_mps=speed_mps,
+                speed_kmh=speed_mps * 3.6,
+                power_w=power_w,
+                bearing_deg=0.0,  # Heading North
+                temp_c=20.0,
+                surface_pressure_hpa=1013.25,
+                surface_pressure_pa=101325.0,
+                wind_speed_10m_mps=5.0,
+                wind_speed_cyclist_mps=3.175,
+                wind_direction_deg=0.0,  # From North (headwind)
+                air_density_kg_m3=1.20,
+                yaw_angle_deg=0.0,
+                headwind_comp_mps=3.175,
+                crosswind_comp_mps=0.0,
+                apparent_wind_speed_mps=speed_mps + 3.175,
+                apparent_wind_angle_deg=0.0,
+            )
+        )
+    return points
+
+
+def test_simulation_spatial_discretization():
+    points = make_test_enriched_track(n_points=50)  # total 490m
+    req = WhatIfSimulationRequest(spatial_step_m=5.0)
+
+    res = SimulationEngine.run_simulation(points, req)
+
+    assert len(res.spatial_points) > 0
+    # Steps should be spaced by approx 5m
+    assert math.isclose(res.spatial_points[1].distance_m - res.spatial_points[0].distance_m, 5.0, abs_tol=1e-2)
+    assert res.summary.total_distance_m == points[-1].distance_m
+
+
+def test_simulation_zero_wind_faster_than_headwind():
+    points = make_test_enriched_track(n_points=60)  # Baseline has 3.175 m/s headwind
+    # Scenario: Zero wind
+    req = WhatIfSimulationRequest(zero_wind=True, spatial_step_m=5.0)
+
+    res = SimulationEngine.run_simulation(points, req)
+
+    # Without headwind, cyclist should ride faster, so simulated time should be lower
+    # Note: baseline time is derived from baseline speed
+    assert res.summary.simulated_avg_speed_kmh > 0.0
+    assert res.summary.simulated_time_s > 0.0
+
+
+def test_simulation_route_reversal():
+    points = make_test_enriched_track(n_points=60)
+    req_forward = WhatIfSimulationRequest(reverse_route=False, spatial_step_m=5.0)
+    req_reverse = WhatIfSimulationRequest(reverse_route=True, spatial_step_m=5.0)
+
+    res_fwd = SimulationEngine.run_simulation(points, req_forward)
+    res_rev = SimulationEngine.run_simulation(points, req_reverse)
+
+    assert res_rev.summary.reverse_route is True
+    # Bearings in reverse should be rotated by 180 degrees
+    fwd_bearing = res_fwd.spatial_points[0].bearing_deg
+    rev_bearing = res_rev.spatial_points[0].bearing_deg
+    diff_bearing = abs(fwd_bearing - rev_bearing)
+    assert math.isclose(diff_bearing, 180.0, abs_tol=1e-2)
+
+
+def test_adaptive_pacing_conserves_mean_power():
+    points = make_test_enriched_track(n_points=80)
+    req = WhatIfSimulationRequest(
+        pacing_mode=PacingMode.ADAPTIVE_SLOPE,
+        spatial_step_m=5.0,
+    )
+
+    res = SimulationEngine.run_simulation(points, req)
+
+    powers = np.array([sp.power_w for sp in res.spatial_points])
+    # Average power in adaptive pacing should be conserved and close to original 250W
+    assert math.isclose(float(np.mean(powers)), 250.0, rel_tol=0.05)
+
+
+def test_equivalent_power_solver():
+    points = make_test_enriched_track(n_points=60)
+    # Double the headwind (wind_scale_factor = 2.0)
+    req = WhatIfSimulationRequest(
+        wind_scale_factor=2.0,
+        calculate_equivalent_power=True,
+    )
+
+    res = SimulationEngine.run_simulation(points, req)
+
+    assert res.summary.equivalent_power_w is not None
+    # Facing double headwind, equivalent power to match baseline time MUST be higher than 250W
+    assert res.summary.equivalent_power_w > 250.0

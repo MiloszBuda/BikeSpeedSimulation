@@ -51,11 +51,13 @@ class PhysicsSolver:
         rho: float,
         eta: float,
         g: float,
+        f_brake_base: float = 0.0,
     ) -> float:
         """
         Calculate instantaneous net force acting on the bicycle along the road.
         Positive force accelerates the bicycle forward; negative force decelerates it.
-        Includes standing sprint aerodynamics, cadence efficiency limits, and acceleration capping.
+        Includes standing sprint aerodynamics, cadence efficiency limits, acceleration capping,
+        and recovered baseline descent braking.
         """
         speed = max(speed, 0.5)
 
@@ -99,7 +101,7 @@ class PhysicsSolver:
         if slope < -0.015 and power < 30.0 and speed > 17.0:
             f_brake = (speed - 17.0) * 40.0
 
-        f_net = f_pedal + f_gravity - f_aero - f_rr - f_brake
+        f_net = f_pedal + f_gravity - f_aero - f_rr - f_brake - max(0.0, f_brake_base)
 
         # Acceleration cap: road cyclist on a bicycle cannot exceed realistic physiological forward acceleration
         # Higher at low speeds (standing starts ~1.25 m/s^2), lower at high sprint speeds (~0.55-0.75 m/s^2)
@@ -126,11 +128,15 @@ class PhysicsSolver:
         distance_step_m: float = 5.0,
         substeps: int = 4,
         max_speed_mps: float = 30.0,
+        f_brake_base: np.ndarray = None,
+        v_base: np.ndarray = None,
+        reverse_route: bool = False,
     ) -> np.ndarray:
         """
         Simulate continuous bicycle speed along a distance grid using predictor-corrector
         (Heun's method) in v^2 kinetic energy space: d(v^2)/dx = 2/m * F_net(v).
         Guarantees smooth, continuous physics and eliminates independent point artifacts.
+        Integrates recovered baseline descent braking force to prevent uncontrolled 0W freefall.
         """
         P = np.asarray(P, dtype=np.float64)
         s = np.asarray(s, dtype=np.float64)
@@ -179,6 +185,12 @@ class PhysicsSolver:
                 w_perp_next = float(wind_perpendicular[i - 1] * (1 - alpha_next) + wind_perpendicular[i] * alpha_next)
                 rho_next = float(rho[i - 1] * (1 - alpha_next) + rho[i] * alpha_next)
 
+                brk_curr = 0.0
+                brk_next = 0.0
+                if f_brake_base is not None and not reverse_route:
+                    brk_curr = float(f_brake_base[i - 1] * (1 - alpha) + f_brake_base[i] * alpha)
+                    brk_next = float(f_brake_base[i - 1] * (1 - alpha_next) + f_brake_base[i] * alpha_next)
+
                 v_curr = math.sqrt(max(v2, 0.25))
 
                 # Force at current speed
@@ -194,6 +206,7 @@ class PhysicsSolver:
                     rho=rho_curr,
                     eta=eta,
                     g=g,
+                    f_brake_base=brk_curr,
                 )
 
                 # Predictor
@@ -214,12 +227,24 @@ class PhysicsSolver:
                     rho=rho_next,
                     eta=eta,
                     g=g,
+                    f_brake_base=brk_next,
                 )
 
                 # Corrector (Heun average force)
                 force_avg = 0.5 * (force_curr + force_pred)
                 v2 = v2 + (2.0 * h / m) * force_avg
                 v2 = max(0.25, min(max_speed_mps**2, v2))
+
+            # Power-dependent descent speed envelope:
+            # On descents (s < -0.015), if cyclist was coasting/braking in baseline,
+            # don't allow simulated speed to drift arbitrarily far from baseline without pedaling power.
+            if v_base is not None and not reverse_route and s[i] < -0.015:
+                p_val = float(P[i])
+                margin_mps = (2.5 + 6.0 * min(1.0, max(0.0, p_val) / 250.0)) / 3.6
+                v_descent_max = float(v_base[i]) + margin_mps
+                v_calc = math.sqrt(v2)
+                if v_calc > v_descent_max:
+                    v2 = max(0.25, v_descent_max**2)
 
             speed[i] = math.sqrt(v2)
 

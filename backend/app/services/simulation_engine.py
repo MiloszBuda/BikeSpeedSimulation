@@ -158,6 +158,25 @@ class SimulationEngine:
         stopped_mask = x_speed_base < 0.5
         x_power_effective[stopped_mask] = 0.0
 
+        # 6. Baseline Descent Braking Recovery:
+        # Reconstruct the braking force the rider applied on descents to control speed,
+        # preventing 0W coasting from artificially accelerating to 50-60 km/h.
+        f_brake_base = SimulationEngine._compute_baseline_braking_force(
+            v_base=v_base_clean,
+            p_base=x_power_base,
+            s=x_slope,
+            bearing_deg=x_bearing,
+            wind_speed=x_wind_speed,
+            wind_dir_deg=x_wind_dir,
+            dx=dx,
+            m=request.mass_kg,
+            cda=request.cda,
+            crr=request.crr,
+            rho=x_rho,
+            eta=request.drivetrain_efficiency,
+            g=settings.GRAVITY,
+        )
+
         if is_baseline:
             # 1. Baseline scenario: identical conditions to the recorded ride.
             # Deltas must be exactly zero, simulated speed matches baseline speed.
@@ -187,6 +206,9 @@ class SimulationEngine:
                 distance_step_m=dx,
                 substeps=4,
                 max_speed_mps=30.0,
+                f_brake_base=f_brake_base,
+                v_base=v_base_clean,
+                reverse_route=request.reverse_route,
             )
 
             v_sim_clean = np.maximum(v_sim, 0.5)
@@ -214,6 +236,9 @@ class SimulationEngine:
                     eta=request.drivetrain_efficiency,
                     dx=dx,
                     v_initial=v_initial,
+                    f_brake_base=f_brake_base,
+                    v_base=v_base_clean,
+                    reverse_route=request.reverse_route,
                 )
 
         # Compute trajectory acceleration for diagnostic inspection
@@ -265,6 +290,66 @@ class SimulationEngine:
         return WhatIfSimulationResponse(summary=summary, spatial_points=spatial_points)
 
     @staticmethod
+    def _compute_baseline_braking_force(
+        v_base: np.ndarray,
+        p_base: np.ndarray,
+        s: np.ndarray,
+        bearing_deg: np.ndarray,
+        wind_speed: np.ndarray,
+        wind_dir_deg: np.ndarray,
+        dx: float,
+        m: float,
+        cda: float,
+        crr: float,
+        rho: np.ndarray,
+        eta: float,
+        g: float,
+    ) -> np.ndarray:
+        """
+        Recover the baseline braking force profile applied by the cyclist during descents.
+        When a cyclist coasts/freewheels down a steep hill at moderate speed (e.g. 20 km/h),
+        they are actively holding brakes. Recovering this force prevents What-If simulations
+        from treating the descent as an uncontrolled 60+ km/h freefall.
+        """
+        n = len(v_base)
+        if n == 0:
+            return np.array([], dtype=np.float64)
+
+        v_clean = np.maximum(v_base, 0.5)
+        v_seg = 0.5 * (v_clean[:-1] + v_clean[1:])
+        dt = dx / np.maximum(v_seg, 0.5)
+
+        a_base = np.zeros(n, dtype=np.float64)
+        for i in range(1, n):
+            a_base[i] = (v_clean[i] - v_clean[i - 1]) / max(1e-3, float(dt[i - 1]))
+
+        bearing_rad = np.radians(bearing_deg)
+        wind_dir_rad = np.radians(wind_dir_deg)
+        beta = wind_dir_rad - bearing_rad
+        w_par = wind_speed * np.cos(beta)
+        w_perp = wind_speed * np.sin(beta)
+
+        rel_head = v_clean + w_par
+        app_wind = np.sqrt(rel_head * rel_head + w_perp * w_perp)
+        f_aero = 0.5 * rho * cda * app_wind * rel_head
+        f_rr = m * g * crr
+        f_gravity = -m * g * s
+
+        p_mech = np.maximum(p_base * eta, 0.0)
+        f_pedal = np.minimum(p_mech / v_clean, 750.0)
+
+        # Net forward driving force in baseline
+        f_drive = f_pedal + f_gravity - f_aero - f_rr
+        # Surplus force that was held back by the rider's brakes:
+        f_brake_base = np.maximum(0.0, f_drive - m * a_base)
+
+        # Braking force only applies on descents (s < -0.005)
+        f_brake_base[s >= -0.005] = 0.0
+        f_brake_base = np.clip(f_brake_base, 0.0, 400.0)
+
+        return f_brake_base
+
+    @staticmethod
     def _solve_equivalent_power(
         target_time_s: float,
         base_power: np.ndarray,
@@ -279,6 +364,9 @@ class SimulationEngine:
         eta: float,
         dx: float,
         v_initial: float = 8.0,
+        f_brake_base: np.ndarray = None,
+        v_base: np.ndarray = None,
+        reverse_route: bool = False,
     ) -> float:
         """
         Binary search to determine scaled power P_eq = k * P such that simulated time matches target_time_s.
@@ -304,6 +392,9 @@ class SimulationEngine:
                 distance_step_m=dx,
                 substeps=4,
                 max_speed_mps=30.0,
+                f_brake_base=f_brake_base,
+                v_base=v_base,
+                reverse_route=reverse_route,
             )
             v_clean = np.maximum(v_trial, 0.5)
             v_seg = 0.5 * (v_clean[:-1] + v_clean[1:])

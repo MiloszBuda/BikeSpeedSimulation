@@ -292,6 +292,62 @@ def test_simulation_downhill_no_speed_jump():
     assert max_sim_speed < 60.0
 
 
+def test_simulation_coasting_descent_preserves_braking_and_prevents_speed_blowup():
+    """
+    Regression test: a coasting (0W) descent on a -6.5% gradient where recorded baseline speed
+    was ~22 km/h (cyclist holding brakes) must NOT blow up to 50-60 km/h in simulation.
+    """
+    base_time = datetime(2023, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
+    points: list[EnrichedPoint] = []
+
+    # 50 points (500m) on a -6.5% descent, 0W power, rider holding brakes at ~22 km/h (6.11 m/s)
+    for i in range(50):
+        dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
+        elev = 300.0 - i * 0.65  # -6.5% grade
+        points.append(
+            EnrichedPoint(
+                time_offset_s=i,
+                timestamp=dt,
+                lat=52.0 + i * 0.0001,
+                lon=21.0,
+                elevation_m=elev,
+                distance_m=i * 10.0,
+                speed_mps=6.11,  # 22.0 km/h
+                speed_kmh=22.0,
+                power_w=0.0,  # 0W coasting/braking
+                bearing_deg=0.0,
+                temp_c=20.0,
+                surface_pressure_hpa=1013.25,
+                surface_pressure_pa=101325.0,
+                wind_speed_10m_mps=3.0,
+                wind_speed_cyclist_mps=1.9,
+                wind_direction_deg=180.0,
+                air_density_kg_m3=1.20,
+                yaw_angle_deg=0.0,
+                headwind_comp_mps=-1.9,
+                crosswind_comp_mps=0.0,
+                apparent_wind_speed_mps=4.21,
+                apparent_wind_angle_deg=0.0,
+            )
+        )
+
+    # What-If with Zero Wind
+    req = WhatIfSimulationRequest(
+        zero_wind=True,
+        spatial_step_m=5.0,
+        pacing_mode=PacingMode.ORIGINAL,
+    )
+    res = SimulationEngine.run_simulation(points, req)
+
+    sim_speeds = [sp.simulated_speed_kmh for sp in res.spatial_points]
+    max_sim_speed = max(sim_speeds)
+
+    # Simulated speed must NOT blow up 2x-3x to 50-60 km/h; must stay bounded close to 22 km/h (+2.5 km/h margin max)
+    assert max_sim_speed <= 25.0, f"Max speed {max_sim_speed:.1f} km/h blew up on 0W braking descent"
+    assert min(sim_speeds) >= 15.0, f"Min speed {min(sim_speeds):.1f} km/h dropped unrealistically"
+
+
+
 def test_simulation_sprint_power_bounded_and_no_explosive_speed_jump():
     """
     Regression test: a 1035W sprint on flat terrain with baseline speed 33.7 km/h -> 43 km/h

@@ -104,3 +104,59 @@ async def test_process_fit_with_wind_modifiers(sample_fit_bytes, sample_weather_
         # In zero-wind scenario, wind speed at cyclist is 0, so apparent wind == bike speed
         assert p0["wind_speed_cyclist_mps"] == 0.0
         assert pytest.approx(p0["apparent_wind_speed_mps"], 1e-2) == p0["speed_mps"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_estimate_cda_endpoint(sample_fit_bytes, sample_weather_api_response):
+    respx.get(settings.OPEN_METEO_ARCHIVE_URL).respond(
+        status_code=200,
+        json=sample_weather_api_response,
+    )
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        files = {"file": ("ride.fit", sample_fit_bytes, "application/octet-stream")}
+        data = {
+            "mass_kg": 78.0,
+            "fixed_crr": 0.004,
+            "initial_cda": 0.32,
+        }
+        res = await client.post("/api/physics/estimate-cda", files=files, data=data)
+
+        assert res.status_code == 200
+        result = res.json()
+        assert "cda" in result
+        assert "crr" in result
+        assert "virtual_elevation_m" in result
+        assert "real_elevation_m" in result
+        assert 0.10 < result["cda"] < 0.65
+        assert len(result["virtual_elevation_m"]) == 30
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_simulation_what_if_endpoint(sample_fit_bytes, sample_weather_api_response):
+    respx.get(settings.OPEN_METEO_ARCHIVE_URL).respond(
+        status_code=200,
+        json=sample_weather_api_response,
+    )
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        files = {"file": ("ride.fit", sample_fit_bytes, "application/octet-stream")}
+        data = {
+            "mass_kg": 78.0,
+            "cda": 0.32,
+            "crr": 0.004,
+            "spatial_step_m": 5.0,
+            "zero_wind": "true",
+            "calculate_equivalent_power": "true",
+        }
+        res = await client.post("/api/simulation/what-if", files=files, data=data)
+
+        assert res.status_code == 200
+        result = res.json()
+        assert "summary" in result
+        assert "spatial_points" in result
+        assert result["summary"]["simulated_avg_speed_kmh"] > 0.0
+        assert len(result["spatial_points"]) > 0
+

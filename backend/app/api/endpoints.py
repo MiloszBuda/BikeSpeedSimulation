@@ -4,8 +4,14 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+import numpy as np
 
-from app.schemas.fit import FitInspectResponse, FitProcessResponse
+from app.schemas.fit import (
+    ChungEstimateResponse,
+    FitInspectResponse,
+    FitProcessResponse,
+    WhatIfSimulationResponse,
+)
 from app.services.fit_parser import FitParser
 from app.services.weather_service import WeatherService
 from app.services.wind_analysis import WindAnalysisService
@@ -180,3 +186,185 @@ async def process_fit(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process activity: {str(e)}",
         )
+
+
+@router.post(
+    "/physics/estimate-cda",
+    response_model=ChungEstimateResponse,
+    summary="Estimate aerodynamic drag CdA and rolling resistance Crr using Chung's Virtual Elevation method",
+)
+async def estimate_cda(
+    file: UploadFile = File(...),
+    mass_kg: float = Form(78.0),
+    drivetrain_efficiency: float = Form(0.97),
+    fixed_crr: Optional[float] = Form(None),
+    initial_cda: float = Form(0.32),
+    initial_crr: float = Form(0.004),
+):
+    """
+    Fits CdA (and optionally Crr) to match virtual elevation profile h_virt(t) with real elevation.
+    Ideal for closed loops (out-and-back, velodrome, circuit) with minimal braking.
+    """
+    if not file.filename.lower().endswith(".fit"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file must have a .fit extension.",
+        )
+
+    try:
+        content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is empty.",
+            )
+
+        track_points, summary = FitParser.parse_fit_bytes(content)
+
+        # Fetch Open-Meteo weather
+        start_date_str = summary.start_time.strftime("%Y-%m-%d")
+        end_date_str = summary.end_time.strftime("%Y-%m-%d")
+        weather_raw = await weather_service.fetch_weather_raw(
+            lat=summary.bbox.center_lat,
+            lon=summary.bbox.center_lon,
+            start_date=start_date_str,
+            end_date=end_date_str,
+        )
+        weather_points, _ = weather_service.interpolate_to_timestamps(
+            weather_raw, [tp.timestamp for tp in track_points]
+        )
+        enriched = WindAnalysisService.enrich_track_with_weather(track_points, weather_points)
+
+        # Arrays for Chung fitting
+        p_arr = np.array([pt.power_w for pt in enriched], dtype=np.float64)
+        v_arr = np.array([pt.speed_mps for pt in enriched], dtype=np.float64)
+        v_app_arr = np.array([pt.apparent_wind_speed_mps for pt in enriched], dtype=np.float64)
+        rho_arr = np.array([pt.air_density_kg_m3 for pt in enriched], dtype=np.float64)
+        h_real_arr = np.array([pt.elevation_m for pt in enriched], dtype=np.float64)
+
+        from app.services.chung_service import ChungService
+        res = ChungService.fit_parameters(
+            P=p_arr,
+            v=v_arr,
+            v_app=v_app_arr,
+            rho=rho_arr,
+            m=mass_kg,
+            h_real=h_real_arr,
+            dt=1.0,
+            eta=drivetrain_efficiency,
+            initial_cda=initial_cda,
+            initial_crr=initial_crr,
+            fixed_crr=fixed_crr,
+        )
+
+        return ChungEstimateResponse(
+            cda=res["cda"],
+            crr=res["crr"],
+            r_squared=res["r_squared"],
+            rmse_m=res["rmse_m"],
+            virtual_elevation_m=res["virtual_elevation"],
+            real_elevation_m=res["real_elevation"],
+            time_offset_s=[pt.time_offset_s for pt in enriched],
+        )
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.warning(f"Validation error in estimate-cda: {e}")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    except Exception as e:
+        logger.exception("Unexpected error in estimate-cda")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fit CdA: {str(e)}",
+        )
+
+
+@router.post(
+    "/simulation/what-if",
+    response_model=WhatIfSimulationResponse,
+    summary="Run distance-domain 'What-If' simulation under modified wind and route conditions",
+)
+async def simulate_what_if(
+    file: UploadFile = File(...),
+    mass_kg: float = Form(78.0),
+    cda: float = Form(0.32),
+    crr: float = Form(0.004),
+    drivetrain_efficiency: float = Form(0.97),
+    spatial_step_m: float = Form(5.0),
+    zero_wind: bool = Form(False),
+    wind_scale_factor: float = Form(1.0),
+    wind_rotation_deg: float = Form(0.0),
+    reverse_route: bool = Form(False),
+    pacing_mode: str = Form("original"),
+    calculate_equivalent_power: bool = Form(True),
+):
+    """
+    Run spatial simulation in the distance domain (delta_x = 5m).
+    Supports:
+    - Zero wind / scaled wind (0x - 2x) / wind angle rotation
+    - Route reversal ('Jazda pod prąd') with inverted grade
+    - Adaptive pacing models (reducing power on descents, increasing on climbs)
+    - Equivalent power calculation to match baseline time
+    """
+    if not file.filename.lower().endswith(".fit"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file must have a .fit extension.",
+        )
+
+    try:
+        content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is empty.",
+            )
+
+        track_points, summary = FitParser.parse_fit_bytes(content)
+
+        # Fetch Open-Meteo weather
+        start_date_str = summary.start_time.strftime("%Y-%m-%d")
+        end_date_str = summary.end_time.strftime("%Y-%m-%d")
+        weather_raw = await weather_service.fetch_weather_raw(
+            lat=summary.bbox.center_lat,
+            lon=summary.bbox.center_lon,
+            start_date=start_date_str,
+            end_date=end_date_str,
+        )
+        weather_points, _ = weather_service.interpolate_to_timestamps(
+            weather_raw, [tp.timestamp for tp in track_points]
+        )
+        enriched = WindAnalysisService.enrich_track_with_weather(track_points, weather_points)
+
+        from app.services.simulation_engine import SimulationEngine
+        from app.schemas.fit import WhatIfSimulationRequest
+
+        sim_request = WhatIfSimulationRequest(
+            mass_kg=mass_kg,
+            cda=cda,
+            crr=crr,
+            drivetrain_efficiency=drivetrain_efficiency,
+            spatial_step_m=spatial_step_m,
+            zero_wind=zero_wind,
+            wind_scale_factor=wind_scale_factor,
+            wind_rotation_deg=wind_rotation_deg,
+            reverse_route=reverse_route,
+            pacing_mode=pacing_mode,
+            calculate_equivalent_power=calculate_equivalent_power,
+        )
+
+        return SimulationEngine.run_simulation(enriched, sim_request)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.warning(f"Validation error in simulation: {e}")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    except Exception as e:
+        logger.exception("Unexpected error in simulation")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Simulation failed: {str(e)}",
+        )
+

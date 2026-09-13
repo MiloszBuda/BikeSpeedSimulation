@@ -247,6 +247,7 @@ async def estimate_cda(
         p_arr = np.array([pt.power_w for pt in enriched], dtype=np.float64)
         v_arr = np.array([pt.speed_mps for pt in enriched], dtype=np.float64)
         v_app_arr = np.array([pt.apparent_wind_speed_mps for pt in enriched], dtype=np.float64)
+        v_head_arr = np.array([pt.speed_mps + pt.headwind_comp_mps for pt in enriched], dtype=np.float64)
         rho_arr = np.array([pt.air_density_kg_m3 for pt in enriched], dtype=np.float64)
         h_real_arr = np.array([pt.elevation_m for pt in enriched], dtype=np.float64)
 
@@ -258,6 +259,7 @@ async def estimate_cda(
             rho=rho_arr,
             m=mass_kg,
             h_real=h_real_arr,
+            v_head=v_head_arr,
             dt=1.0,
             eta=drivetrain_efficiency,
             initial_cda=initial_cda,

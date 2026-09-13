@@ -21,13 +21,16 @@ class ChungService:
         m: float,
         CdA: float,
         Crr: float,
+        v_head: Optional[np.ndarray] = None,
         dt: float = 1.0,
         eta: float = settings.DEFAULT_ETA,
         g: float = settings.GRAVITY,
     ) -> np.ndarray:
         """
         Integrate power balance equation over discrete time steps to produce virtual elevation profile h_virt(t).
-        Uses trapezoidal integration to eliminate discrete phase lag.
+        Uses the exact aerodynamic drag force formulation matching PhysicsSolver:
+        P_aero = 0.5 * rho * CdA * v_app * v_head * v
+        where v_head is the relative headwind component along the direction of travel (v + w_parallel).
         """
         P = np.asarray(P, dtype=np.float64)
         v = np.asarray(v, dtype=np.float64)
@@ -37,12 +40,17 @@ class ChungService:
         if len(v) == 0:
             return np.array([], dtype=np.float64)
 
+        if v_head is None:
+            v_head_arr = v_app
+        else:
+            v_head_arr = np.asarray(v_head, dtype=np.float64)
+
         # Kinetic energy term: (v(t)^2 - v(0)^2) / (2 * g)
         v0 = v[0]
         kinetic_term = (v**2 - v0**2) / (2.0 * g)
 
         power_term = (P * eta) / (m * g)
-        aero_term = (0.5 * rho * CdA * (v_app**2) * v) / (m * g)
+        aero_term = (0.5 * rho * CdA * v_app * v_head_arr * v) / (m * g)
         crr_term = Crr * v
 
         integrand = power_term - aero_term - crr_term
@@ -59,6 +67,7 @@ class ChungService:
         rho: np.ndarray,
         m: float,
         h_real: np.ndarray,
+        v_head: Optional[np.ndarray] = None,
         dt: float = 1.0,
         eta: float = settings.DEFAULT_ETA,
         initial_cda: float = settings.DEFAULT_CDA,
@@ -78,7 +87,7 @@ class ChungService:
             def objective(params):
                 cda_val = params[0]
                 h_virt = ChungService.compute_virtual_elevation(
-                    P, v, v_app, rho, m, CdA=cda_val, Crr=fixed_crr, dt=dt, eta=eta, g=g
+                    P, v, v_app, rho, m, CdA=cda_val, Crr=fixed_crr, v_head=v_head, dt=dt, eta=eta, g=g
                 )
                 h_virt_offset = h_virt - (h_virt[0] - h_real_smooth[0])
                 return np.sum((h_virt_offset - h_real_smooth)**2)
@@ -96,7 +105,7 @@ class ChungService:
             def objective(params):
                 cda_val, crr_val = params
                 h_virt = ChungService.compute_virtual_elevation(
-                    P, v, v_app, rho, m, CdA=cda_val, Crr=crr_val, dt=dt, eta=eta, g=g
+                    P, v, v_app, rho, m, CdA=cda_val, Crr=crr_val, v_head=v_head, dt=dt, eta=eta, g=g
                 )
                 h_virt_offset = h_virt - (h_virt[0] - h_real_smooth[0])
                 return np.sum((h_virt_offset - h_real_smooth)**2)
@@ -112,7 +121,7 @@ class ChungService:
 
         # Final virtual elevation curve
         final_h_virt = ChungService.compute_virtual_elevation(
-            P, v, v_app, rho, m, CdA=opt_cda, Crr=opt_crr, dt=dt, eta=eta, g=g
+            P, v, v_app, rho, m, CdA=opt_cda, Crr=opt_crr, v_head=v_head, dt=dt, eta=eta, g=g
         )
         final_h_virt_aligned = final_h_virt - (final_h_virt[0] - h_real_smooth[0])
 

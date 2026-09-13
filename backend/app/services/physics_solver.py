@@ -59,9 +59,10 @@ class PhysicsSolver:
         tau_down: float = 2.2,
     ) -> np.ndarray:
         """
-        Apply asymmetric first-order power response model to suppress unrealistic instantaneous power spikes.
-        Models neuromuscular torque ramp-up (~1.2s) and drivetrain/cadence momentum decay (~2.2s).
-        Preserves total physical work (integral of P dt) while eliminating unphysical square-wave force spikes.
+        Apply an asymmetric first-order power response filter.
+
+        The filtered power is rescaled afterward so that total mechanical
+        work over the activity remains equal to the original power profile.
         """
         power = np.asarray(power, dtype=np.float64)
         time_s = np.asarray(time_s, dtype=np.float64)
@@ -77,6 +78,14 @@ class PhysicsSolver:
             tau = tau_up if power[i] > result[i - 1] else tau_down
             alpha = 1.0 - math.exp(-dt / tau)
             result[i] = result[i - 1] + alpha * (power[i] - result[i - 1])
+
+        # Preserve total work using trapezoidal integration.
+        trapz_fn = getattr(np, "trapezoid", getattr(np, "trapz", None))
+        original_work = float(trapz_fn(power, time_s))
+        filtered_work = float(trapz_fn(result, time_s))
+
+        if filtered_work > 1e-6 and original_work >= 0.0:
+            result *= original_work / filtered_work
 
         return result
 
@@ -408,7 +417,8 @@ class PhysicsSolver:
             target_dev = v_target - v_base
             target_dev = max(-max_deviation, min(max_deviation, target_dev))
 
-            # 3. Dynamic transition with response time tau and physiological acceleration limits
+            # 3. Smooth transition toward the wind-induced speed deviation.
+            # Limits how quickly the aerodynamic perturbation may change.
             alpha = 1.0 - math.exp(-dt / max(deviation_response_time_s, 0.1))
             step_dev = alpha * (target_dev - delta_v)
             step_dev = max(-max_decel_mps2 * dt, min(max_accel_mps2 * dt, step_dev))

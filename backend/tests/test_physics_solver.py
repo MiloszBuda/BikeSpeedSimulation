@@ -105,25 +105,25 @@ def test_solve_speed_terminal_velocity_coasting():
 
 
 def test_smooth_power_response_asymmetric_lag():
-    """Verify that instantaneous power surges ramp smoothly and decay smoothly."""
+    """Verify that instantaneous power surges ramp smoothly, decay smoothly, and preserve total work."""
     time_s = np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
     # Step from 200W to 1000W at t=1, then drop back to 200W at t=4
     raw_power = np.array([200.0, 1000.0, 1000.0, 1000.0, 200.0, 200.0, 200.0, 200.0])
 
     p_eff = PhysicsSolver.smooth_power_response(raw_power, time_s, tau_up=1.2, tau_down=2.2)
 
-    # Initial value
-    assert math.isclose(p_eff[0], 200.0, abs_tol=1e-3)
+    # Work conservation: integral of power over time must be preserved
+    trapz_fn = getattr(np, "trapezoid", getattr(np, "trapz", None))
+    orig_work = float(trapz_fn(raw_power, time_s))
+    filt_work = float(trapz_fn(p_eff, time_s))
+    assert math.isclose(filt_work, orig_work, rel_tol=1e-3)
 
-    # At t=1 (first second of 1000W spike): should be ~650W, NOT 1000W immediately
-    assert 550.0 < p_eff[1] < 750.0
-
-    # At t=3: should have ramped close to ~950W
+    # Ramp is smooth (first second after 1000W step does not jump instantly to 1000W)
+    assert p_eff[1] < 800.0
     assert p_eff[3] > p_eff[2] > p_eff[1]
-    assert p_eff[3] > 900.0
 
-    # At t=4 (drop back to 200W): should decay smoothly (tau_down=2.2s), not plunge to 200W instantly
-    assert p_eff[4] > 400.0
+    # Decay is smooth (does not plunge to 200W instantly)
+    assert p_eff[4] > 300.0
     assert p_eff[5] < p_eff[4]
 
 
@@ -279,3 +279,235 @@ def test_simulate_original_pacing_220w_flat_headwind_removal_reaches_full_delta(
     assert math.isclose(final_speed_kmh, 35.45, abs_tol=0.5)
     assert math.isclose(delta_kmh, 12.13, abs_tol=0.5)
 
+
+
+def test_original_pacing_baseline_exact_match():
+    """Test A: Identical wind conditions (scale=1, rot=0°, zero_wind=False) -> v_sim == v_base, delta == 0."""
+    n = 100
+    v_base = np.linspace(8.0, 12.0, n)
+    bearing = np.full(n, 30.0)
+    wind_speed = np.full(n, 5.0)
+    wind_dir = np.full(n, 90.0)
+    rho = np.full(n, 1.20)
+
+    v_sim = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=wind_speed,
+        base_wind_dir_deg=wind_dir,
+        sim_wind_speed=wind_speed,
+        sim_wind_dir_deg=wind_dir,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+    # Exact match down to floating point precision
+    assert np.allclose(v_sim, v_base, atol=1e-6)
+
+
+def test_original_pacing_zero_wind_sign_direction():
+    """Test B: Correct sign of response when removing wind (zero wind):
+    - Removing tailwind makes cyclist slower (v_sim < v_base)
+    - Removing headwind makes cyclist faster (v_sim > v_base)
+    """
+    n = 80
+    v_base = np.full(n, 30.0 / 3.6)
+    bearing = np.zeros(n)  # heading North (0°)
+    rho = np.full(n, 1.225)
+
+    # 1. Baseline with tailwind (wind from 180° / South, parallel < 0)
+    base_wind_tw = np.full(n, 5.0)
+    base_dir_tw = np.full(n, 180.0)
+    sim_wind_zero = np.zeros(n)
+    sim_dir_zero = np.zeros(n)
+
+    v_sim_tw_removal = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind_tw,
+        base_wind_dir_deg=base_dir_tw,
+        sim_wind_speed=sim_wind_zero,
+        sim_wind_dir_deg=sim_dir_zero,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+    # Removing tailwind assist must slow the rider down
+    assert v_sim_tw_removal[-1] < v_base[-1]
+
+    # 2. Baseline with headwind (wind from 0° / North, parallel > 0)
+    base_wind_hw = np.full(n, 5.0)
+    base_dir_hw = np.full(n, 0.0)
+
+    v_sim_hw_removal = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind_hw,
+        base_wind_dir_deg=base_dir_hw,
+        sim_wind_speed=sim_wind_zero,
+        sim_wind_dir_deg=sim_dir_zero,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+    # Removing headwind resistance must speed the rider up
+    assert v_sim_hw_removal[-1] > v_base[-1]
+
+
+def test_original_pacing_2x_wind_nonlinear_scaling():
+    """Test C: 2x wind causes non-linear speed increase (drag is quadratic in v_app).
+    Doubling tailwind from 4 m/s to 8 m/s increases speed, but with diminishing returns,
+    and never blows up to unrealistic speeds.
+    """
+    n = 120
+    v_base = np.full(n, 32.0 / 3.6)
+    bearing = np.zeros(n)  # heading North
+    rho = np.full(n, 1.225)
+
+    base_wind = np.full(n, 4.0)
+    base_dir = np.full(n, 180.0)  # Tailwind 4 m/s (~14.4 km/h)
+
+    # 2x tailwind: 8 m/s (~28.8 km/h)
+    sim_wind_2x = np.full(n, 8.0)
+    sim_dir_2x = np.full(n, 180.0)
+
+    v_sim_2x = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind,
+        base_wind_dir_deg=base_dir,
+        sim_wind_speed=sim_wind_2x,
+        sim_wind_dir_deg=sim_dir_2x,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    v_base_kmh = float(v_base[-1] * 3.6)
+    v_sim_2x_kmh = float(v_sim_2x[-1] * 3.6)
+
+    # Speed increases
+    assert v_sim_2x_kmh > v_base_kmh
+    # Increase should be realistic (e.g. +4 to +8 km/h, NOT doubling to 64 km/h)
+    assert 35.0 < v_sim_2x_kmh < 44.0
+
+
+def test_original_pacing_90deg_crosswind_rotation():
+    """Test D: 90° rotation changes headwind to pure crosswind.
+    Crosswind has zero headwind component but increases apparent wind v_app = sqrt(v^2 + w^2).
+    A pure crosswind is noticeably faster than pure headwind, but slower than calm air.
+    """
+    n = 100
+    v_base = np.full(n, 30.0 / 3.6)
+    bearing = np.zeros(n)  # heading North
+    rho = np.full(n, 1.225)
+
+    # Baseline: 5 m/s headwind (North)
+    base_wind = np.full(n, 5.0)
+    base_dir = np.zeros(n)
+
+    # 90° rotation: East wind (pure crosswind)
+    sim_wind_cross = np.full(n, 5.0)
+    sim_dir_cross = np.full(n, 90.0)
+
+    v_sim_cross = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind,
+        base_wind_dir_deg=base_dir,
+        sim_wind_speed=sim_wind_cross,
+        sim_wind_dir_deg=sim_dir_cross,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    # Rotating from pure headwind to pure crosswind relieves headwind resistance -> rider speeds up
+    assert v_sim_cross[-1] > v_base[-1]
+
+
+def test_original_pacing_0_5x_wind_monotonicity():
+    """Test E: Monotonicity test:
+    For headwind: v_base (1.0x) < v_sim (0.5x) < v_sim (0.0x calm).
+    """
+    n = 100
+    v_base = np.full(n, 28.0 / 3.6)
+    bearing = np.zeros(n)
+    rho = np.full(n, 1.225)
+
+    base_wind_hw = np.full(n, 6.0)
+    base_dir_hw = np.zeros(n)
+
+    # 0.5x headwind (3.0 m/s)
+    sim_wind_05x = np.full(n, 3.0)
+    sim_dir_hw = np.zeros(n)
+
+    # 0.0x (calm)
+    sim_wind_0x = np.zeros(n)
+
+    v_sim_05x = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind_hw,
+        base_wind_dir_deg=base_dir_hw,
+        sim_wind_speed=sim_wind_05x,
+        sim_wind_dir_deg=sim_dir_hw,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    v_sim_0x = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind_hw,
+        base_wind_dir_deg=base_dir_hw,
+        sim_wind_speed=sim_wind_0x,
+        sim_wind_dir_deg=sim_dir_hw,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    # Strict monotonicity: v_base < v_sim_05x < v_sim_0x
+    assert v_base[-1] < v_sim_05x[-1] < v_sim_0x[-1]
+
+
+def test_original_pacing_180deg_wind_reversal():
+    """Test F: Wind reversal (180° rotation):
+    Tailwind in baseline (180°) turned into headwind (0°) causes substantial speed drop.
+    """
+    n = 100
+    v_base = np.full(n, 36.0 / 3.6)
+    bearing = np.zeros(n)  # heading North
+    rho = np.full(n, 1.225)
+
+    base_wind = np.full(n, 5.0)
+    base_dir_tw = np.full(n, 180.0)  # Tailwind in baseline
+
+    sim_wind = np.full(n, 5.0)
+    sim_dir_hw = np.full(n, 0.0)    # 180° reversed -> Headwind
+
+    v_sim_rev = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind,
+        base_wind_dir_deg=base_dir_tw,
+        sim_wind_speed=sim_wind,
+        sim_wind_dir_deg=sim_dir_hw,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    # Turning tailwind into headwind must cause significant slowdown
+    assert v_sim_rev[-1] < v_base[-1]
+    assert (v_base[-1] - v_sim_rev[-1]) * 3.6 > 5.0

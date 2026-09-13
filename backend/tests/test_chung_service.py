@@ -87,3 +87,35 @@ def test_fit_parameters_recovers_known_cda():
     assert fit_res["r_squared"] > 0.95
     # Low RMSE
     assert fit_res["rmse_m"] < 1.0
+
+
+def test_compute_virtual_elevation_with_v_head():
+    """Verify that compute_virtual_elevation correctly accepts v_head and unifies with PhysicsSolver aero drag."""
+    dt = 1.0
+    n = 100
+    v = np.full(n, 10.0)
+    # Wind with crosswind & headwind component
+    # w_par = 2.0, w_perp = 2.0 -> v_head = 10 + 2 = 12.0
+    # v_app = sqrt(12^2 + 2^2) = sqrt(148)
+    v_head = np.full(n, 12.0)
+    v_app = np.full(n, math.sqrt(12.0**2 + 2.0**2))
+    rho = np.full(n, 1.20)
+    m = 78.0
+    g = 9.80665
+    eta = 0.97
+    CdA = 0.30
+    Crr = 0.004
+
+    # Equilibrium power with exact PhysicsSolver aero model:
+    # P_aero = 0.5 * rho * CdA * v_app * v_head * v
+    p_aero = 0.5 * rho[0] * CdA * v_app[0] * v_head[0] * v[0]
+    p_rr = m * g * Crr * v[0]
+    P = np.full(n, (p_aero + p_rr) / eta)
+
+    h_virt = ChungService.compute_virtual_elevation(
+        P=P, v=v, v_app=v_app, rho=rho, m=m, CdA=CdA, Crr=Crr, v_head=v_head, dt=dt, eta=eta, g=g
+    )
+
+    # With exactly matching equilibrium power, virtual elevation change should be ~0 m
+    h_change = h_virt[-1] - h_virt[0]
+    assert math.isclose(h_change, 0.0, abs_tol=1e-3)

@@ -103,10 +103,11 @@ export const WindCompass: React.FC<WindCompassProps> = ({
 
   return (
     <div className="flex flex-col items-center select-none w-full">
-      <div className="flex items-start justify-between w-full mb-2.5 gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 pt-0.5">
+      {/* Row 1: Title and Tooltip */}
+      <div className="flex items-center justify-between w-full mb-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <Compass className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
             {titleText}
           </span>
           <Tooltip
@@ -122,13 +123,16 @@ export const WindCompass: React.FC<WindCompassProps> = ({
             position="right"
           />
         </div>
-        <div className="text-right shrink-0 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-2.5 py-1 rounded font-mono flex flex-col items-end leading-tight shadow-sm">
-          <span className="text-xs font-bold text-teal-600 dark:text-teal-300">
-            ➔ {flowCardinal.label} ({flowAngle}°)
-          </span>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-            {fromText}: {Math.round(angle)}° {sourceCardinal.label}
-          </span>
+      </div>
+
+      {/* Row 2: Angle and Cardinal Direction */}
+      <div className="w-full flex items-center justify-between bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-2.5 py-1 mb-2 rounded font-mono text-xs shadow-sm">
+        <div className="flex items-center gap-1 text-teal-600 dark:text-teal-300 font-bold">
+          <span>➔ {flowCardinal.label}</span>
+          <span>({flowAngle}°)</span>
+        </div>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+          {fromText}: {Math.round(angle)}° {sourceCardinal.label}
         </div>
       </div>
 

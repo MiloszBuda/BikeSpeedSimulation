@@ -103,8 +103,8 @@ export const WindCompass: React.FC<WindCompassProps> = ({
 
   return (
     <div className="flex flex-col items-center select-none w-full">
-      <div className="flex items-center justify-between w-full mb-2.5 gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-start justify-between w-full mb-2.5 gap-2">
+        <div className="flex items-center gap-1.5 min-w-0 pt-0.5">
           <Compass className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
           <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
             {titleText}
@@ -122,12 +122,12 @@ export const WindCompass: React.FC<WindCompassProps> = ({
             position="right"
           />
         </div>
-        <div className="text-right shrink-0 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-2 py-0.5 rounded font-mono">
-          <span className="text-xs font-bold text-teal-600 dark:text-teal-300" title={`${flowText}: ${flowAngle}°`}>
+        <div className="text-right shrink-0 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-2.5 py-1 rounded font-mono flex flex-col items-end leading-tight shadow-sm">
+          <span className="text-xs font-bold text-teal-600 dark:text-teal-300">
             ➔ {flowCardinal.label} ({flowAngle}°)
           </span>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-1.5" title={`${fromText}: ${Math.round(angle)}°`}>
-            [{fromText}: {Math.round(angle)}° {sourceCardinal.label}]
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+            {fromText}: {Math.round(angle)}° {sourceCardinal.label}
           </span>
         </div>
       </div>

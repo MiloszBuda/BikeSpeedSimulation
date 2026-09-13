@@ -123,25 +123,18 @@ async def process_fit(
         start_date_str = summary.start_time.strftime("%Y-%m-%d")
         end_date_str = summary.end_time.strftime("%Y-%m-%d")
 
-        # Fetch Open-Meteo weather for activity centroid
-        try:
-            weather_raw = await weather_service.fetch_weather_raw(
-                lat=summary.bbox.center_lat,
-                lon=summary.bbox.center_lon,
-                start_date=start_date_str,
-                end_date=end_date_str,
-            )
-        except Exception as e:
-            logger.error(f"Failed to fetch weather from Open-Meteo: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Open-Meteo weather service error: {str(e)}",
-            )
-
-        # Interpolate weather to 1 Hz timestamps
+        # Fetch Open-Meteo weather for activity centroid with resilient caching & fallback
         target_timestamps = [tp.timestamp for tp in track_points]
-        weather_points, weather_summary = weather_service.interpolate_to_timestamps(
-            weather_raw, target_timestamps
+        avg_elev = float(np.mean([tp.elevation_m for tp in track_points])) if track_points else 150.0
+
+        weather_points, weather_summary = await weather_service.get_weather_for_track(
+            lat=summary.bbox.center_lat,
+            lon=summary.bbox.center_lon,
+            start_date=start_date_str,
+            end_date=end_date_str,
+            target_timestamps=target_timestamps,
+            avg_elevation_m=avg_elev,
+            temp_c_hint=summary.avg_temperature_c,
         )
 
         # Apply any wind overrides or modifiers
@@ -223,17 +216,20 @@ async def estimate_cda(
 
         track_points, summary = FitParser.parse_fit_bytes(content)
 
-        # Fetch Open-Meteo weather
+        # Fetch Open-Meteo weather (utilizes in-memory cache)
         start_date_str = summary.start_time.strftime("%Y-%m-%d")
         end_date_str = summary.end_time.strftime("%Y-%m-%d")
-        weather_raw = await weather_service.fetch_weather_raw(
+        target_timestamps = [tp.timestamp for tp in track_points]
+        avg_elev = float(np.mean([tp.elevation_m for tp in track_points])) if track_points else 150.0
+
+        weather_points, _ = await weather_service.get_weather_for_track(
             lat=summary.bbox.center_lat,
             lon=summary.bbox.center_lon,
             start_date=start_date_str,
             end_date=end_date_str,
-        )
-        weather_points, _ = weather_service.interpolate_to_timestamps(
-            weather_raw, [tp.timestamp for tp in track_points]
+            target_timestamps=target_timestamps,
+            avg_elevation_m=avg_elev,
+            temp_c_hint=summary.avg_temperature_c,
         )
         enriched = WindAnalysisService.enrich_track_with_weather(track_points, weather_points)
 
@@ -325,17 +321,20 @@ async def simulate_what_if(
 
         track_points, summary = FitParser.parse_fit_bytes(content)
 
-        # Fetch Open-Meteo weather
+        # Fetch Open-Meteo weather (utilizes in-memory cache)
         start_date_str = summary.start_time.strftime("%Y-%m-%d")
         end_date_str = summary.end_time.strftime("%Y-%m-%d")
-        weather_raw = await weather_service.fetch_weather_raw(
+        target_timestamps = [tp.timestamp for tp in track_points]
+        avg_elev = float(np.mean([tp.elevation_m for tp in track_points])) if track_points else 150.0
+
+        weather_points, _ = await weather_service.get_weather_for_track(
             lat=summary.bbox.center_lat,
             lon=summary.bbox.center_lon,
             start_date=start_date_str,
             end_date=end_date_str,
-        )
-        weather_points, _ = weather_service.interpolate_to_timestamps(
-            weather_raw, [tp.timestamp for tp in track_points]
+            target_timestamps=target_timestamps,
+            avg_elevation_m=avg_elev,
+            temp_c_hint=summary.avg_temperature_c,
         )
         enriched = WindAnalysisService.enrich_track_with_weather(track_points, weather_points)
 

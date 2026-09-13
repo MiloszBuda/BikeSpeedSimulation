@@ -6,6 +6,7 @@ import respx
 
 from app.config import settings
 from app.main import app
+from app.services.weather_service import WeatherService
 
 
 @pytest.mark.asyncio
@@ -171,5 +172,26 @@ async def test_cors_github_pages_origin():
         res = await client.options("/api/fit/process", headers=headers)
         assert res.status_code == 200
         assert res.headers.get("access-control-allow-origin") == "https://miloszbuda.github.io"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_process_fit_open_meteo_429_returns_fallback_success(sample_fit_bytes):
+    """Regression test: Open-Meteo 429 rate limit must NOT cause 502 Bad Gateway; must succeed with fallback weather."""
+    WeatherService.clear_cache()
+    respx.get(settings.OPEN_METEO_ARCHIVE_URL).respond(status_code=429, text="Too Many Requests")
+    respx.get(settings.OPEN_METEO_FORECAST_URL).respond(status_code=429, text="Too Many Requests")
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        files = {"file": ("activity_429.fit", sample_fit_bytes, "application/octet-stream")}
+        res = await client.post("/api/fit/process", files=files)
+
+        # Must NOT be 502 Bad Gateway!
+        assert res.status_code == 200
+        data = res.json()
+        assert "weather_summary" in data
+        assert data["weather_summary"]["is_fallback"] is True
+        assert "429" in (data["weather_summary"]["fallback_reason"] or "") or "limit" in (data["weather_summary"]["fallback_reason"] or "")
+        assert len(data["points"]) == 30
 
 

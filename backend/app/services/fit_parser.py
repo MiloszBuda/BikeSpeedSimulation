@@ -115,6 +115,7 @@ class FitParser:
                 power = frame.get_value("power", fallback=0.0)
                 cadence = frame.get_value("cadence", fallback=None)
                 heart_rate = frame.get_value("heart_rate", fallback=None)
+                temp = frame.get_value("temperature", fallback=None)
 
                 raw_records.append({
                     "timestamp": dt,
@@ -126,6 +127,7 @@ class FitParser:
                     "power": float(power) if power is not None else 0.0,
                     "cadence": float(cadence) if cadence is not None else None,
                     "heart_rate": float(heart_rate) if heart_rate is not None else None,
+                    "temperature": float(temp) if temp is not None else None,
                 })
 
         if not raw_records:
@@ -275,6 +277,9 @@ class FitParser:
         min_lat, max_lat = float(np.min(interp_lat)), float(np.max(interp_lat))
         min_lon, max_lon = float(np.min(interp_lon)), float(np.max(interp_lon))
 
+        temp_values = [r["temperature"] for r in records if r.get("temperature") is not None]
+        avg_temp_c = float(np.mean(temp_values)) if temp_values else None
+
         summary = FitSummary(
             start_time=start_time,
             end_time=end_time,
@@ -295,6 +300,7 @@ class FitParser:
                 center_lon=(min_lon + max_lon) / 2.0,
             ),
             points_count=len(track_points),
+            avg_temperature_c=avg_temp_c,
         )
 
         return track_points, summary

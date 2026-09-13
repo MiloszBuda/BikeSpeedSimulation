@@ -113,3 +113,61 @@ async def test_fetch_weather_raw_archive_success(sample_weather_api_response):
     assert "hourly" in data
     assert len(data["hourly"]["time"]) == 4
     assert data["latitude"] == 52.23
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_weather_for_track_429_graceful_fallback():
+    """Verify that an Open-Meteo 429 Too Many Requests error does NOT crash and returns realistic fallback weather."""
+    service = WeatherService()
+
+    # Mock all Open-Meteo endpoints returning 429
+    respx.get(service.archive_url).respond(status_code=429, text="Too Many Requests")
+    respx.get(service.forecast_url).respond(status_code=429, text="Too Many Requests")
+
+    target_times = [
+        datetime(2026, 9, 13, 10, 0, 0, tzinfo=timezone.utc),
+        datetime(2026, 9, 13, 10, 0, 1, tzinfo=timezone.utc),
+    ]
+
+    async with httpx.AsyncClient() as client:
+        points, summary = await service.get_weather_for_track(
+            lat=50.15,
+            lon=21.82,
+            start_date="2026-09-13",
+            end_date="2026-09-13",
+            target_timestamps=target_times,
+            avg_elevation_m=220.0,
+            temp_c_hint=19.5,
+            client=client,
+        )
+
+    assert len(points) == 2
+    assert summary.is_fallback is True
+    assert "429" in (summary.fallback_reason or "") or "limit" in (summary.fallback_reason or "")
+    # Should use the hint temperature 19.5 C
+    assert math.isclose(summary.avg_temp_c, 19.5, rel_tol=1e-3)
+    # Air density at 220m altitude should be around ~1.17-1.18 kg/m3
+    assert 1.15 < summary.avg_air_density_kg_m3 < 1.25
+    assert points[0].wind_speed_10m_mps == 2.0
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_weather_cache_avoids_duplicate_api_calls(sample_weather_api_response):
+    """Verify that calling fetch_weather_raw for same spatial area hits cache instead of remote API."""
+    service = WeatherService()
+
+    route = respx.get(service.archive_url).respond(
+        status_code=200,
+        json=sample_weather_api_response,
+    )
+
+    async with httpx.AsyncClient() as client:
+        # First call: hits remote API
+        await service.fetch_weather_raw(lat=52.234, lon=21.012, start_date="2020-01-01", end_date="2020-01-01", client=client)
+        # Second call with nearby coordinates (same 2-decimal cell): hits cache
+        await service.fetch_weather_raw(lat=52.231, lon=21.014, start_date="2020-01-01", end_date="2020-01-01", client=client)
+
+    # Remote route should have only been called once
+    assert route.call_count == 1

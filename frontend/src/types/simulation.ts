@@ -29,6 +29,8 @@ export interface WeatherSummary {
   avg_wind_speed_10m_mps: number;
   avg_wind_speed_cyclist_mps: number;
   dominant_wind_dir_deg: number;
+  is_fallback?: boolean;
+  fallback_reason?: string | null;
 }
 
 export interface EnrichedPoint {

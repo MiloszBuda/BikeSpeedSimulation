@@ -1,5 +1,7 @@
 """Weather data fetching, temporal/spatial interpolation, and atmospheric physics service."""
 
+import asyncio
+import logging
 import math
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -10,9 +12,21 @@ import numpy as np
 from app.config import settings
 from app.schemas.fit import WeatherPoint, WeatherSummary
 
+logger = logging.getLogger(__name__)
+
+# Global in-memory cache for Open-Meteo responses keyed by (lat, lon, start_date, end_date)
+# Spatial coordinates rounded to 2 decimal places (~1.1 km resolution)
+_WEATHER_CACHE: Dict[Tuple[float, float, str, str], Dict[str, Any]] = {}
+_MAX_CACHE_SIZE = 256
+
 
 class WeatherService:
     """Service to fetch Open-Meteo weather reanalysis and interpolate along ride track."""
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """Clear in-memory weather cache (primarily for tests)."""
+        _WEATHER_CACHE.clear()
 
     def __init__(
         self,
@@ -54,9 +68,14 @@ class WeatherService:
         client: Optional[httpx.AsyncClient] = None,
     ) -> Dict[str, Any]:
         """
-        Fetch hourly weather variables from Open-Meteo Historical Archive API,
-        with fallback to forecast API for very recent dates (within last 5 days).
+        Fetch hourly weather variables from Open-Meteo API with caching, smart endpoint routing,
+        and retry with backoff on 429 rate limits.
         """
+        cache_key = (round(lat, 2), round(lon, 2), start_date, end_date)
+        if cache_key in _WEATHER_CACHE:
+            logger.info(f"Open-Meteo cache hit for {cache_key}")
+            return _WEATHER_CACHE[cache_key]
+
         params = {
             "latitude": round(lat, 4),
             "longitude": round(lon, 4),
@@ -79,17 +98,52 @@ class WeatherService:
             should_close = True
 
         try:
-            # First try historical archive API
-            res = await client.get(self.archive_url, params=params)
-            if res.status_code == 200:
-                data = res.json()
-                if "hourly" in data and "time" in data["hourly"] and len(data["hourly"]["time"]) > 0:
-                    return data
+            # Historical ERA5 has 5-day latency; recent dates must use forecast endpoint directly
+            today = datetime.now(timezone.utc).date()
+            try:
+                start_d = datetime.fromisoformat(start_date).date()
+                is_recent = (today - start_d).days < 5
+            except Exception:
+                is_recent = True
 
-            # Fallback to forecast endpoint with past_days if recent or if archive fails
-            fallback_res = await client.get(self.forecast_url, params=params)
-            fallback_res.raise_for_status()
-            return fallback_res.json()
+            urls_to_try = (
+                [self.forecast_url, self.archive_url]
+                if is_recent
+                else [self.archive_url, self.forecast_url]
+            )
+
+            last_error = None
+            for url in urls_to_try:
+                for attempt in range(2):
+                    try:
+                        res = await client.get(url, params=params)
+                        if res.status_code == 200:
+                            data = res.json()
+                            if "hourly" in data and "time" in data["hourly"] and len(data["hourly"]["time"]) > 0:
+                                _WEATHER_CACHE[cache_key] = data
+                                if len(_WEATHER_CACHE) > _MAX_CACHE_SIZE:
+                                    oldest = next(iter(_WEATHER_CACHE))
+                                    del _WEATHER_CACHE[oldest]
+                                return data
+                        elif res.status_code == 429:
+                            last_error = httpx.HTTPStatusError("429 Too Many Requests", request=res.request, response=res)
+                            logger.warning(f"Open-Meteo 429 rate limit on {url} (attempt {attempt+1}/2)")
+                            if attempt == 0:
+                                await asyncio.sleep(1.5)
+                                continue
+                        else:
+                            last_error = httpx.HTTPStatusError(f"{res.status_code} {res.reason_phrase}", request=res.request, response=res)
+                            break
+                    except (httpx.TimeoutException, httpx.NetworkError) as err:
+                        last_error = err
+                        logger.warning(f"Network error querying {url}: {err} (attempt {attempt+1}/2)")
+                        if attempt == 0:
+                            await asyncio.sleep(1.0)
+                            continue
+
+            if last_error:
+                raise last_error
+            raise RuntimeError("No weather data returned from Open-Meteo endpoints.")
         finally:
             if should_close:
                 await client.aclose()
@@ -199,6 +253,115 @@ class WeatherService:
             avg_wind_speed_10m_mps=float(np.mean(interp_wind_speed_10m)),
             avg_wind_speed_cyclist_mps=float(np.mean(cyclist_wind_speeds)),
             dominant_wind_dir_deg=float(dom_wind_dir),
+            is_fallback=False,
+            fallback_reason=None,
         )
 
         return weather_points, summary
+
+    def generate_fallback_weather(
+        self,
+        target_timestamps: List[datetime],
+        avg_elevation_m: float = 150.0,
+        temp_c_override: Optional[float] = None,
+        reason: str = "Open-Meteo API limit lub niedostępność usługi",
+    ) -> Tuple[List[WeatherPoint], WeatherSummary]:
+        """
+        Generate realistic standard atmospheric weather profile when Open-Meteo is unavailable.
+        Uses ISA barometric formula for altitude-adjusted air pressure and density,
+        with gentle baseline breeze (2.0 m/s) and measured temperature (if available).
+        """
+        n = len(target_timestamps)
+        temp_c = float(temp_c_override) if temp_c_override is not None else 20.0
+        # International Standard Atmosphere (ISA) barometric formula
+        p_hpa = float(1013.25 * (1.0 - 2.25577e-5 * max(0.0, avg_elevation_m)) ** 5.25588)
+        p_pa = p_hpa * 100.0
+        rho = self.calculate_air_density(p_pa, temp_c)
+        w_10m = 2.0
+        w_cyclist = self.scale_wind_speed(w_10m)
+        w_dir = 0.0
+
+        if n == 0:
+            empty_summary = WeatherSummary(
+                avg_temp_c=temp_c,
+                avg_pressure_hpa=p_hpa,
+                avg_air_density_kg_m3=rho,
+                avg_wind_speed_10m_mps=w_10m,
+                avg_wind_speed_cyclist_mps=w_cyclist,
+                dominant_wind_dir_deg=w_dir,
+                is_fallback=True,
+                fallback_reason=reason,
+            )
+            return [], empty_summary
+
+        weather_points = [
+            WeatherPoint(
+                temp_c=temp_c,
+                surface_pressure_hpa=p_hpa,
+                surface_pressure_pa=p_pa,
+                wind_speed_10m_mps=w_10m,
+                wind_speed_cyclist_mps=w_cyclist,
+                wind_direction_deg=w_dir,
+                relative_humidity_pct=50.0,
+                air_density_kg_m3=rho,
+            )
+            for _ in range(n)
+        ]
+
+        summary = WeatherSummary(
+            avg_temp_c=temp_c,
+            avg_pressure_hpa=p_hpa,
+            avg_air_density_kg_m3=rho,
+            avg_wind_speed_10m_mps=w_10m,
+            avg_wind_speed_cyclist_mps=w_cyclist,
+            dominant_wind_dir_deg=w_dir,
+            is_fallback=True,
+            fallback_reason=reason,
+        )
+
+        return weather_points, summary
+
+    async def get_weather_for_track(
+        self,
+        lat: float,
+        lon: float,
+        start_date: str,
+        end_date: str,
+        target_timestamps: List[datetime],
+        avg_elevation_m: float = 150.0,
+        temp_c_hint: Optional[float] = None,
+        client: Optional[httpx.AsyncClient] = None,
+    ) -> Tuple[List[WeatherPoint], WeatherSummary]:
+        """
+        Fetch weather for track with automatic caching, endpoint routing, and graceful fallback.
+        Guarantees that a 429 rate limit or network outage from Open-Meteo will NEVER
+        crash the application or abort activity processing.
+        """
+        weather_raw = None
+        fail_reason = None
+
+        try:
+            weather_raw = await self.fetch_weather_raw(
+                lat=lat,
+                lon=lon,
+                start_date=start_date,
+                end_date=end_date,
+                client=client,
+            )
+        except Exception as e:
+            logger.warning(f"Open-Meteo API query failed: {e}; engaging fallback weather.")
+            fail_reason = str(e)
+
+        if weather_raw is not None:
+            try:
+                return self.interpolate_to_timestamps(weather_raw, target_timestamps)
+            except Exception as e:
+                logger.warning(f"Failed to interpolate weather from API response: {e}")
+                fail_reason = str(e)
+
+        return self.generate_fallback_weather(
+            target_timestamps=target_timestamps,
+            avg_elevation_m=avg_elevation_m,
+            temp_c_override=temp_c_hint,
+            reason=f"Open-Meteo API limit lub niedostępność ({fail_reason})",
+        )

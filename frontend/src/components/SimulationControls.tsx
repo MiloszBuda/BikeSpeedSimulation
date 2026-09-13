@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
+  Info,
 } from 'lucide-react';
 import { WindCompass } from './WindCompass';
 import { Tooltip } from './Tooltip';
@@ -35,6 +36,8 @@ interface SimulationControlsProps {
   isLoading: boolean;
   baselineWindSpeedMps?: number;
   baselineWindDirDeg?: number;
+  isWeatherFallback?: boolean;
+  weatherFallbackReason?: string | null;
 }
 
 export const SimulationControls: React.FC<SimulationControlsProps> = ({
@@ -46,6 +49,8 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   isLoading,
   baselineWindSpeedMps = 4.0,
   baselineWindDirDeg = 90.0,
+  isWeatherFallback = false,
+  weatherFallbackReason = null,
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -96,6 +101,18 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           <span>Reset pogody</span>
         </button>
       </div>
+
+      {/* Weather Fallback Alert */}
+      {isWeatherFallback && (
+        <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-2.5 flex items-start gap-2.5 text-amber-200/90 text-xs leading-relaxed">
+          <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold text-amber-300">Standardowa atmosfera (ISA):</span>{' '}
+            Zastosowano model ISA (1013 hPa, gęstość ~1.20 kg/m³, wiatr bazowy 2.0 m/s) z powodu chwilowego limitu darmowego API Open-Meteo.
+            Możesz swobodnie testować warianty pogody suwakami i kompasem.
+          </div>
+        </div>
+      )}
 
       {/* Main Two-Column Controls Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">

@@ -117,13 +117,152 @@ async def test_fetch_weather_raw_archive_success(sample_weather_api_response):
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_get_weather_for_track_429_graceful_fallback():
-    """Verify that an Open-Meteo 429 Too Many Requests error does NOT crash and returns realistic fallback weather."""
+async def test_get_weather_for_track_429_triggers_brightsky_fallback():
+    """Verify that Open-Meteo 429 automatically cascades to Bright Sky API and returns real station weather."""
     service = WeatherService()
+    WeatherService.clear_cache()
 
-    # Mock all Open-Meteo endpoints returning 429
+    # Open-Meteo returns 429
     respx.get(service.archive_url).respond(status_code=429, text="Too Many Requests")
     respx.get(service.forecast_url).respond(status_code=429, text="Too Many Requests")
+
+    # Bright Sky returns valid DWD station observations
+    brightsky_payload = {
+        "weather": [
+            {
+                "timestamp": "2026-09-13T10:00:00+00:00",
+                "temperature": 18.0,
+                "pressure_msl": 1018.0,
+                "wind_speed": 14.4,  # 14.4 km/h = 4.0 m/s
+                "wind_direction": 180.0,
+                "relative_humidity": 55.0,
+            },
+            {
+                "timestamp": "2026-09-13T11:00:00+00:00",
+                "temperature": 19.0,
+                "pressure_msl": 1017.0,
+                "wind_speed": 18.0,  # 18.0 km/h = 5.0 m/s
+                "wind_direction": 190.0,
+                "relative_humidity": 50.0,
+            },
+        ],
+        "sources": [{"station_name": "RZESZOW-JASIONKA"}],
+    }
+    respx.get("https://api.brightsky.dev/weather").respond(status_code=200, json=brightsky_payload)
+
+    target_times = [
+        datetime(2026, 9, 13, 10, 0, 0, tzinfo=timezone.utc),
+        datetime(2026, 9, 13, 10, 30, 0, tzinfo=timezone.utc),
+    ]
+
+    async with httpx.AsyncClient() as client:
+        points, summary = await service.get_weather_for_track(
+            lat=50.15,
+            lon=21.82,
+            start_date="2026-09-13",
+            end_date="2026-09-13",
+            target_timestamps=target_times,
+            avg_elevation_m=200.0,
+            temp_c_hint=18.0,
+            client=client,
+        )
+
+    assert len(points) == 2
+    assert summary.is_fallback is False
+    assert summary.weather_provider == "Bright Sky (DWD/SYNOP)"
+    assert math.isclose(summary.avg_temp_c, 18.25, rel_tol=1e-2)
+    assert math.isclose(summary.avg_wind_speed_10m_mps, 4.25, rel_tol=1e-2)
+    assert math.isclose(summary.dominant_wind_dir_deg, 182.5, abs_tol=1.0)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_weather_for_track_429_triggers_met_norway_fallback():
+    """Verify that if Open-Meteo and Bright Sky fail, MET Norway is queried and succeeds."""
+    service = WeatherService()
+    WeatherService.clear_cache()
+
+    # Open-Meteo returns 429
+    respx.get(service.archive_url).respond(status_code=429, text="Too Many Requests")
+    respx.get(service.forecast_url).respond(status_code=429, text="Too Many Requests")
+
+    # Bright Sky returns 500
+    respx.get("https://api.brightsky.dev/weather").respond(status_code=500, text="Internal Server Error")
+
+    # MET Norway returns valid timeseries
+    met_payload = {
+        "properties": {
+            "timeseries": [
+                {
+                    "time": "2026-09-13T10:00:00Z",
+                    "data": {
+                        "instant": {
+                            "details": {
+                                "air_temperature": 16.0,
+                                "air_pressure_at_sea_level": 1015.0,
+                                "wind_speed": 3.0,
+                                "wind_from_direction": 90.0,
+                                "relative_humidity": 60.0,
+                            }
+                        }
+                    },
+                },
+                {
+                    "time": "2026-09-13T11:00:00Z",
+                    "data": {
+                        "instant": {
+                            "details": {
+                                "air_temperature": 17.0,
+                                "air_pressure_at_sea_level": 1015.0,
+                                "wind_speed": 4.0,
+                                "wind_from_direction": 90.0,
+                                "relative_humidity": 55.0,
+                            }
+                        }
+                    },
+                },
+            ]
+        }
+    }
+    respx.get("https://api.met.no/weatherapi/locationforecast/2.0/compact").respond(status_code=200, json=met_payload)
+
+    target_times = [
+        datetime(2026, 9, 13, 10, 0, 0, tzinfo=timezone.utc),
+    ]
+
+    async with httpx.AsyncClient() as client:
+        points, summary = await service.get_weather_for_track(
+            lat=50.15,
+            lon=21.82,
+            start_date="2026-09-13",
+            end_date="2026-09-13",
+            target_timestamps=target_times,
+            avg_elevation_m=200.0,
+            temp_c_hint=16.0,
+            client=client,
+        )
+
+    assert len(points) == 1
+    assert summary.is_fallback is False
+    assert summary.weather_provider == "MET Norway"
+    assert math.isclose(summary.avg_temp_c, 16.0, rel_tol=1e-2)
+    assert math.isclose(summary.avg_wind_speed_10m_mps, 3.0, rel_tol=1e-2)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_weather_for_track_429_graceful_fallback():
+    """Verify that when all external services fail, ISA fallback engages gracefully without error."""
+    service = WeatherService()
+    WeatherService.clear_cache()
+
+    # Open-Meteo returns 429
+    respx.get(service.archive_url).respond(status_code=429, text="Too Many Requests")
+    respx.get(service.forecast_url).respond(status_code=429, text="Too Many Requests")
+    # Bright Sky returns 500
+    respx.get("https://api.brightsky.dev/weather").respond(status_code=500, text="Down")
+    # MET Norway returns 500
+    respx.get("https://api.met.no/weatherapi/locationforecast/2.0/compact").respond(status_code=500, text="Down")
 
     target_times = [
         datetime(2026, 9, 13, 10, 0, 0, tzinfo=timezone.utc),
@@ -144,10 +283,10 @@ async def test_get_weather_for_track_429_graceful_fallback():
 
     assert len(points) == 2
     assert summary.is_fallback is True
-    assert "429" in (summary.fallback_reason or "") or "limit" in (summary.fallback_reason or "")
+    assert summary.weather_provider == "Standard Atmosphere (ISA)"
+    assert "niedostępne" in (summary.fallback_reason or "") or "429" in (summary.fallback_reason or "")
     # Should use the hint temperature 19.5 C
     assert math.isclose(summary.avg_temp_c, 19.5, rel_tol=1e-3)
-    # Air density at 220m altitude should be around ~1.17-1.18 kg/m3
     assert 1.15 < summary.avg_air_density_kg_m3 < 1.25
     assert points[0].wind_speed_10m_mps == 2.0
 

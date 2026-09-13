@@ -95,3 +95,13 @@ def sample_weather_api_response() -> Dict[str, Any]:
             "relative_humidity_2m": [70.0, 68.0, 65.0, 60.0],
         },
     }
+
+
+@pytest.fixture(autouse=True)
+def auto_clear_weather_cache():
+    """Clear WeatherService in-memory cache before and after every test to ensure test isolation."""
+    from app.services.weather_service import WeatherService
+    WeatherService.clear_cache()
+    yield
+    WeatherService.clear_cache()
+

@@ -486,6 +486,7 @@ export const App: React.FC = () => {
               isLoading={isSimulating}
               baselineWindSpeedMps={processData.weather_summary.avg_wind_speed_cyclist_mps}
               baselineWindDirDeg={processData.weather_summary.dominant_wind_dir_deg}
+              weatherProvider={processData.weather_summary.weather_provider}
               isWeatherFallback={processData.weather_summary.is_fallback}
               weatherFallbackReason={processData.weather_summary.fallback_reason}
             />

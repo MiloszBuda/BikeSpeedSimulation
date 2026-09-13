@@ -14,7 +14,10 @@ async def test_health_endpoints():
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get("/health")
         assert res.status_code == 200
-        assert res.json()["status"] == "ok"
+        data = res.json()
+        assert data["status"] == "ok"
+        assert data["version"] == "1.3.0"
+        assert "Bright Sky (DWD/SYNOP)" in data["weather_providers"]
 
         res_api = await client.get("/api/health")
         assert res_api.status_code == 200
@@ -193,5 +196,48 @@ async def test_process_fit_open_meteo_429_returns_fallback_success(sample_fit_by
         assert data["weather_summary"]["is_fallback"] is True
         assert "429" in (data["weather_summary"]["fallback_reason"] or "") or "limit" in (data["weather_summary"]["fallback_reason"] or "")
         assert len(data["points"]) == 30
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_process_fit_open_meteo_429_returns_brightsky_weather(sample_fit_bytes):
+    """Verify that when Open-Meteo hits 429, /api/fit/process automatically falls back to Bright Sky and returns real station weather."""
+    WeatherService.clear_cache()
+    respx.get(settings.OPEN_METEO_ARCHIVE_URL).respond(status_code=429, text="Too Many Requests")
+    respx.get(settings.OPEN_METEO_FORECAST_URL).respond(status_code=429, text="Too Many Requests")
+
+    brightsky_payload = {
+        "weather": [
+            {
+                "timestamp": "2021-09-08T01:00:00+00:00",
+                "temperature": 17.5,
+                "pressure_msl": 1016.0,
+                "wind_speed": 10.8,  # 3.0 m/s
+                "wind_direction": 90.0,
+                "relative_humidity": 65.0,
+            },
+            {
+                "timestamp": "2021-09-08T02:00:00+00:00",
+                "temperature": 18.0,
+                "pressure_msl": 1015.5,
+                "wind_speed": 14.4,  # 4.0 m/s
+                "wind_direction": 90.0,
+                "relative_humidity": 60.0,
+            },
+        ],
+        "sources": [{"station_name": "RZESZOW-JASIONKA"}],
+    }
+    respx.get("https://api.brightsky.dev/weather").respond(status_code=200, json=brightsky_payload)
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        files = {"file": ("activity.fit", sample_fit_bytes, "application/octet-stream")}
+        res = await client.post("/api/fit/process", files=files)
+
+        assert res.status_code == 200
+        data = res.json()
+        assert "weather_summary" in data
+        assert data["weather_summary"]["weather_provider"] == "Bright Sky (DWD/SYNOP)"
+        assert data["weather_summary"]["is_fallback"] is False
+        assert data["weather_summary"]["avg_wind_speed_10m_mps"] > 0.0
 
 

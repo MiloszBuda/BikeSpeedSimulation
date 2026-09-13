@@ -96,6 +96,7 @@ class WeatherSummary(BaseModel):
     avg_wind_speed_10m_mps: float
     avg_wind_speed_cyclist_mps: float
     dominant_wind_dir_deg: float
+    weather_provider: str = Field(default="Open-Meteo", description="Name of the weather service provider used (Open-Meteo, Bright Sky, MET Norway, Standard Atmosphere)")
     is_fallback: bool = Field(default=False, description="True if standard atmospheric fallback was used due to API limits or network issues")
     fallback_reason: Optional[str] = Field(default=None, description="Detailed reason if fallback weather was used")
 

@@ -36,6 +36,7 @@ interface SimulationControlsProps {
   isLoading: boolean;
   baselineWindSpeedMps?: number;
   baselineWindDirDeg?: number;
+  weatherProvider?: string;
   isWeatherFallback?: boolean;
   weatherFallbackReason?: string | null;
 }
@@ -49,6 +50,7 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   isLoading,
   baselineWindSpeedMps = 4.0,
   baselineWindDirDeg = 90.0,
+  weatherProvider = 'Open-Meteo',
   isWeatherFallback = false,
   weatherFallbackReason = null,
 }) => {
@@ -102,13 +104,24 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         </button>
       </div>
 
+      {/* Alternative Weather Provider Station Notice */}
+      {!isWeatherFallback && weatherProvider && weatherProvider !== 'Open-Meteo' && (
+        <div className="bg-sky-950/40 border border-sky-500/30 rounded-lg p-2.5 flex items-start gap-2.5 text-sky-200/90 text-xs leading-relaxed">
+          <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold text-sky-300">Stacja pogodowa: {weatherProvider}</span>{' '}
+            Pobrano rzeczywiste dane stacyjne (temperatura, ciśnienie, wiatr) z alternatywnego serwisu w miejsce limitowanego Open-Meteo.
+          </div>
+        </div>
+      )}
+
       {/* Weather Fallback Alert */}
       {isWeatherFallback && (
         <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-2.5 flex items-start gap-2.5 text-amber-200/90 text-xs leading-relaxed">
           <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
           <div className="flex-1">
             <span className="font-semibold text-amber-300">Standardowa atmosfera (ISA):</span>{' '}
-            Zastosowano model ISA (1013 hPa, gęstość ~1.20 kg/m³, wiatr bazowy 2.0 m/s) z powodu chwilowego limitu darmowego API Open-Meteo.
+            Zastosowano model ISA (1013 hPa, gęstość ~1.20 kg/m³, wiatr bazowy 2.0 m/s) z powodu chwilowej niedostępności zewnętrznych stacji meteo.
             Możesz swobodnie testować warianty pogody suwakami i kompasem.
           </div>
         </div>

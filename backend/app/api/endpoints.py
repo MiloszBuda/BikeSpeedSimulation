@@ -27,7 +27,17 @@ weather_service = WeatherService()
 @router.get("/status", summary="Status check")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "service": "Bike Speed Simulation Backend"}
+    return {
+        "status": "ok",
+        "service": "Bike Speed Simulation Backend",
+        "version": "1.3.0",
+        "weather_providers": [
+            "Open-Meteo",
+            "Bright Sky (DWD/SYNOP)",
+            "MET Norway",
+            "Standard Atmosphere (ISA)",
+        ],
+    }
 
 
 @router.post(

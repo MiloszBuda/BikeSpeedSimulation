@@ -28,6 +28,7 @@ import {
   saveAdvancedParams,
   resetAdvancedParams,
 } from './utils/storage';
+import { translations, Language } from './i18n/translations';
 
 // Helper to create an exact 0-delta baseline simulation directly from processed FIT data
 export const createBaselineSimulationResponse = (
@@ -72,11 +73,47 @@ export const createBaselineSimulationResponse = (
 });
 
 export const App: React.FC = () => {
+  // Theme & Language State with localStorage persistence
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('aerobike_theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    return 'dark';
+  });
+
+  const [lang, setLang] = useState<Language>(() => {
+    const saved = localStorage.getItem('aerobike_lang');
+    if (saved === 'pl' || saved === 'en') return saved;
+    return 'pl';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aerobike_theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('aerobike_lang', lang);
+  }, [lang]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
+  const toggleLang = useCallback(() => {
+    setLang((prev) => (prev === 'pl' ? 'en' : 'pl'));
+  }, []);
+
+  const t = translations[lang];
+
   const [isBackendOnline, setIsBackendOnline] = useState<boolean>(false);
   const [isCheckingBackend, setIsCheckingBackend] = useState<boolean>(true);
   const [isBlockedByClient, setIsBlockedByClient] = useState<boolean>(false);
   const [activeFile, setActiveFile] = useState<File | null>(null);
-  const [fileName, setFileName] = useState<string>('Trasa demonstracyjna (12 km loop)');
+  const [fileName, setFileName] = useState<string>(lang === 'pl' ? 'Trasa demonstracyjna (12 km loop)' : 'Demo route (12 km loop)');
   const [isProcessingFile, setIsProcessingFile] = useState<boolean>(false);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -148,7 +185,6 @@ export const App: React.FC = () => {
       setIsBlockedByClient(!res.online && res.blockedByClient);
       setIsCheckingBackend(false);
 
-      // Progressive backoff ping to catch Render waking up (free tier cold start takes ~15-25s)
       if (!res.online && attempt < 4 && !isManual && !res.blockedByClient) {
         attempt++;
         const delays = [3000, 6000, 10000, 15000];
@@ -178,18 +214,15 @@ export const App: React.FC = () => {
     setFileError(null);
 
     try {
-      // 1. Process FIT with Open-Meteo weather
       const processed = await processFitFile(file);
       setProcessData(processed);
       setIsBackendOnline(true);
       setIsBlockedByClient(false);
 
-      // Load preserved equipment/rider parameters from localStorage
       const savedParams = loadSavedAdvancedParams();
       const baseSpeed = processed.weather_summary.avg_wind_speed_cyclist_mps;
       const baseDir = processed.weather_summary.dominant_wind_dir_deg;
 
-      // Update config with baseline weather while preserving saved equipment params
       const newConfig: SimulationConfig = {
         zeroWind: false,
         windSpeedMps: baseSpeed,
@@ -204,10 +237,8 @@ export const App: React.FC = () => {
       };
       setConfig(newConfig);
 
-      // 2. Set initial simulation data (guaranteed exact baseline: time delta = 0.0s)
       setSimulationData(createBaselineSimulationResponse(processed));
 
-      // 3. Estimate CdA in background for modal inspection without wiping custom user settings
       estimateChungCdA(file, {
         massKg: newConfig.massKg,
         initialCda: newConfig.cda,
@@ -223,19 +254,12 @@ export const App: React.FC = () => {
       setIsBlockedByClient(!res.online && res.blockedByClient);
       if (!res.online) {
         if (res.blockedByClient) {
-          setFileError(
-            'Zapytanie do backendu zostało zablokowane przez Twoją przeglądarkę (ERR_BLOCKED_BY_CLIENT). ' +
-            'Wyłącz wtyczkę Adblock, uBlock Origin lub Brave Shields dla strony miloszbuda.github.io i spróbuj ponownie.'
-          );
+          setFileError(t.header.adblockTooltip);
         } else {
-          setFileError(
-            'Nie udało się połączyć z backendem Render (https://bikespeedsimulation.onrender.com). ' +
-            'Darmowy serwer Render usypia po 15 min bezczynności — pierwsze wybudzenie trwa ~20 sekund. ' +
-            'Sprawdź status w nagłówku lub kliknij przycisk połączenia i spróbuj ponownie za moment.'
-          );
+          setFileError(t.header.renderTooltip);
         }
       } else {
-        setFileError(err.message || 'Wystąpił błąd podczas przetwarzania pliku FIT.');
+        setFileError(err.message || 'Error processing FIT file.');
       }
     } finally {
       setIsProcessingFile(false);
@@ -262,7 +286,6 @@ export const App: React.FC = () => {
     if (activeFile) {
       setSimulationData(createBaselineSimulationResponse(processData));
     } else {
-      // Demo route baseline reset
       setSimulationData(demoSimulationResponse);
     }
   }, [activeFile, processData, config]);
@@ -273,13 +296,11 @@ export const App: React.FC = () => {
 
     try {
       if (activeFile) {
-        // Calculate angle rotation relative to dominant wind
         const baseDir = processData.weather_summary.dominant_wind_dir_deg;
         const baseSpeed = processData.weather_summary.avg_wind_speed_cyclist_mps;
         const rotDeg = (config.windDirDeg - baseDir + 360) % 360;
         const normRot = Math.min(rotDeg, 360 - rotDeg);
 
-        // Detect if user is running baseline weather (within minor slider/compass rounding or reset)
         const isBaselineWeather =
           !config.zeroWind &&
           Math.abs(config.windSpeedMps - baseSpeed) < 0.25 &&
@@ -325,7 +346,7 @@ export const App: React.FC = () => {
           return;
         }
 
-        // Client-side simulation solver for Demo mode / GitHub Pages
+        // Client-side simulation solver for Demo mode
         const srcPoints = demoSimulationResponse.spatial_points;
         const baseSpeed = 32.4 / 3.6;
         const baseWind = demoProcessResponse.weather_summary.avg_wind_speed_cyclist_mps;
@@ -334,11 +355,9 @@ export const App: React.FC = () => {
           const bearing = config.reverseRoute ? (p.bearing_deg + 180) % 360 : p.bearing_deg;
           const slope = config.reverseRoute ? -p.slope : p.slope;
 
-          // Relative wind
           const beta = (config.windDirDeg - bearing + 360) % 360;
           const headwind = config.zeroWind ? 0 : config.windSpeedMps * Math.cos((beta * Math.PI) / 180);
 
-          // Realistic speed adjustment (bounded between 15 km/h and 65 km/h)
           const aeroDelta = (headwind - (baseWind * 0.3)) * 0.35;
           const slopeDelta = slope * 25.0;
           const simV = Math.max(4.2, Math.min(18.0, baseSpeed - aeroDelta - slopeDelta));
@@ -363,7 +382,7 @@ export const App: React.FC = () => {
         const windDeltaSec = config.zeroWind
           ? 48.0
           : -(config.windSpeedMps - baseWind) * 14.0;
-        const timeDelta = windDeltaSec + pacingBonusSec; // positive = faster (saved time), negative = slower
+        const timeDelta = windDeltaSec + pacingBonusSec;
         const totalSimTime = demoSimulationResponse.summary.baseline_time_s - timeDelta;
 
         const basePower = demoProcessResponse.summary.avg_power_w;
@@ -395,7 +414,7 @@ export const App: React.FC = () => {
   // Load demo route
   const handleLoadDemo = () => {
     setActiveFile(null);
-    setFileName('Trasa demonstracyjna (12 km loop)');
+    setFileName(lang === 'pl' ? 'Trasa demonstracyjna (12 km loop)' : 'Demo route (12 km loop)');
     setProcessData(demoProcessResponse);
     setSimulationData(demoSimulationResponse);
     setChungData(demoChungResponse);
@@ -415,7 +434,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
       {/* Top Header */}
       <Header
         isBackendOnline={isBackendOnline}
@@ -425,24 +444,31 @@ export const App: React.FC = () => {
         onLoadDemo={handleLoadDemo}
         onOpenChungModal={() => setIsChungModalOpen(true)}
         hasData={Boolean(processData)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        lang={lang}
+        onToggleLang={toggleLang}
+        t={t.header}
       />
 
       {/* Main Workspace Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
         {/* Adblock / Client Blocked Notification Banner */}
         {isBlockedByClient && (
-          <div className="bg-rose-950/80 border-2 border-rose-500/80 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-rose-200 text-xs shadow-xl backdrop-blur-sm">
+          <div className="bg-rose-50 dark:bg-rose-950/80 border-2 border-rose-300 dark:border-rose-500/80 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-rose-900 dark:text-rose-200 text-xs shadow-xl backdrop-blur-sm">
             <div className="flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
               <div>
-                <strong className="block text-rose-100 font-semibold text-sm mb-1">
-                  Wykryto blokadę rozszerzenia przeglądarki (net::ERR_BLOCKED_BY_CLIENT)
+                <strong className="block text-rose-950 dark:text-rose-100 font-semibold text-sm mb-1">
+                  {lang === 'pl' ? 'Wykryto blokadę rozszerzenia przeglądarki (net::ERR_BLOCKED_BY_CLIENT)' : 'Browser Extension Block Detected (net::ERR_BLOCKED_BY_CLIENT)'}
                 </strong>
-                <p className="text-rose-300 leading-relaxed">
-                  Twoje rozszerzenie blokujące reklamy lub skrypty śledzące (np. <b>uBlock Origin</b>, <b>AdBlock</b>, <b>AdGuard</b> lub <b>Brave Shields</b>) zablokowało komunikację z serwerem obliczeniowym Render.
+                <p className="text-rose-800 dark:text-rose-300 leading-relaxed">
+                  {lang === 'pl'
+                    ? 'Twoje rozszerzenie blokujące reklamy lub skrypty śledzące (np. uBlock Origin, AdBlock, AdGuard lub Brave Shields) zablokowało komunikację z serwerem obliczeniowym Render.'
+                    : 'Your adblock or privacy extension (e.g., uBlock Origin, AdBlock, AdGuard, or Brave Shields) blocked communication with the Render simulation backend.'}
                 </p>
-                <div className="mt-2 text-rose-200">
-                  👉 <b>Rozwiązanie:</b> Kliknij ikonę Adblocka / tarczy na pasku przeglądarki i <b>wyłącz blokowanie dla strony miloszbuda.github.io</b>, a następnie kliknij przycisk obok.
+                <div className="mt-2 text-rose-900 dark:text-rose-200">
+                  👉 <b>{lang === 'pl' ? 'Rozwiązanie:' : 'Solution:'}</b> {lang === 'pl' ? 'Kliknij ikonę Adblocka na pasku i wyłącz blokowanie dla strony miloszbuda.github.io, a następnie kliknij przycisk obok.' : 'Click your Adblock icon in the toolbar, disable blocking for miloszbuda.github.io, and click retry.'}
                 </div>
               </div>
             </div>
@@ -451,7 +477,7 @@ export const App: React.FC = () => {
               onClick={handleRetryBackend}
               className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg shadow transition-all active:scale-95 shrink-0"
             >
-              Sprawdź ponownie
+              {lang === 'pl' ? 'Sprawdź ponownie' : 'Retry connection'}
             </button>
           </div>
         )}
@@ -462,6 +488,7 @@ export const App: React.FC = () => {
           isLoading={isProcessingFile}
           fileName={fileName}
           error={fileError}
+          t={t.upload}
         />
 
         {/* Telemetry Summary Cards */}
@@ -470,6 +497,7 @@ export const App: React.FC = () => {
             simulationSummary={simulationData?.summary ?? null}
             fitSummary={processData.summary}
             cda={config.cda}
+            t={t.summary}
           />
         )}
 
@@ -489,6 +517,8 @@ export const App: React.FC = () => {
               weatherProvider={processData.weather_summary.weather_provider}
               isWeatherFallback={processData.weather_summary.is_fallback}
               weatherFallbackReason={processData.weather_summary.fallback_reason}
+              t={t.controls}
+              tCompass={t.compass}
             />
           </div>
 
@@ -498,6 +528,8 @@ export const App: React.FC = () => {
               <RouteMap
                 spatialPoints={simulationData.spatial_points}
                 hoveredIndex={hoveredSpatialIndex}
+                theme={theme}
+                t={t.map}
               />
             )}
           </div>
@@ -509,6 +541,8 @@ export const App: React.FC = () => {
             spatialPoints={simulationData.spatial_points}
             enrichedPoints={processData?.points}
             onHoverIndex={setHoveredSpatialIndex}
+            theme={theme}
+            t={t.charts}
           />
         )}
       </main>
@@ -522,10 +556,12 @@ export const App: React.FC = () => {
           setConfig((prev) => ({ ...prev, cda, crr }));
           saveAdvancedParams({ cda, crr });
         }}
+        theme={theme}
+        t={t.chung}
       />
 
       {/* Footer */}
-      <footer className="border-t border-slate-850 bg-slate-900/40 py-4 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-200 dark:border-slate-850 bg-white/40 dark:bg-slate-900/40 py-4 text-center text-xs text-slate-500 transition-colors duration-200">
         AeroBike Simulation Engine • FastAPI Backend • Open-Meteo ERA5 Reanalysis • React & Apache ECharts
       </footer>
     </div>

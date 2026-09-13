@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { WindCompass } from './WindCompass';
 import { Tooltip } from './Tooltip';
+import { Translations } from '../i18n/translations';
 
 export interface SimulationConfig {
   zeroWind: boolean;
@@ -39,6 +40,8 @@ interface SimulationControlsProps {
   weatherProvider?: string;
   isWeatherFallback?: boolean;
   weatherFallbackReason?: string | null;
+  t: Translations['controls'];
+  tCompass: Translations['compass'];
 }
 
 export const SimulationControls: React.FC<SimulationControlsProps> = ({
@@ -53,6 +56,8 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   weatherProvider = 'Open-Meteo',
   isWeatherFallback = false,
   weatherFallbackReason = null,
+  t,
+  tCompass,
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -79,50 +84,49 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col gap-4">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-lg flex flex-col gap-4 transition-colors duration-200">
       {/* Header & Quick Toggles */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-2">
-          <Sliders className="w-5 h-5 text-teal-400" />
-          <h3 className="font-semibold text-slate-100 text-sm tracking-wide">
-            Sterowanie wiatrem i symulacją
+          <Sliders className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+          <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm tracking-wide">
+            {t.title}
           </h3>
           <Tooltip
-            title="Symulacja warunków wiatrowych (What-If)"
-            content="Pozwala badać wpływ zmiany prędkości i kierunku wiatru, odwrócenia trasy oraz strategii pacingu na zysk lub stratę czasu. Model oparty jest na równaniu Chunga i wektorowej analizie wiatru pozornego."
+            title={t.tooltipTitle}
+            content={t.tooltipContent}
             position="bottom"
           />
         </div>
         <button
           type="button"
           onClick={handleResetWeatherClick}
-          className="text-xs text-slate-400 hover:text-teal-300 flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-slate-800"
-          title="Przywróć oryginalną pogodę ze stacji i zresetuj delty do zera"
+          className="text-xs text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-300 flex items-center gap-1.5 transition-colors px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+          title={t.resetWeatherTitle}
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>Reset pogody</span>
+          <span>{t.resetWeather}</span>
         </button>
       </div>
 
       {/* Alternative Weather Provider Station Notice */}
       {!isWeatherFallback && weatherProvider && weatherProvider !== 'Open-Meteo' && (
-        <div className="bg-sky-950/40 border border-sky-500/30 rounded-lg p-2.5 flex items-start gap-2.5 text-sky-200/90 text-xs leading-relaxed">
-          <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+        <div className="bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-500/30 rounded-lg p-2.5 flex items-start gap-2.5 text-sky-900 dark:text-sky-200/90 text-xs leading-relaxed">
+          <Info className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold text-sky-300">Stacja pogodowa: {weatherProvider}</span>{' '}
-            Pobrano rzeczywiste dane stacyjne (temperatura, ciśnienie, wiatr) z alternatywnego serwisu w miejsce limitowanego Open-Meteo.
+            <span className="font-semibold text-sky-700 dark:text-sky-300">{t.weatherStation} {weatherProvider}</span>{' '}
+            {t.weatherStationNotice}
           </div>
         </div>
       )}
 
       {/* Weather Fallback Alert */}
       {isWeatherFallback && (
-        <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-2.5 flex items-start gap-2.5 text-amber-200/90 text-xs leading-relaxed">
-          <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-500/30 rounded-lg p-2.5 flex items-start gap-2.5 text-amber-900 dark:text-amber-200/90 text-xs leading-relaxed">
+          <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold text-amber-300">Standardowa atmosfera (ISA):</span>{' '}
-            Zastosowano model ISA (1013 hPa, gęstość ~1.20 kg/m³, wiatr bazowy 2.0 m/s) z powodu chwilowej niedostępności zewnętrznych stacji meteo.
-            Możesz swobodnie testować warianty pogody suwakami i kompasem.
+            <span className="font-semibold text-amber-700 dark:text-amber-300">{t.isaStation}</span>{' '}
+            {t.isaStationNotice}
           </div>
         </div>
       )}
@@ -130,36 +134,38 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
       {/* Main Two-Column Controls Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         {/* Left Column: Interactive Compass */}
-        <div className="flex flex-col items-center justify-center p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 min-w-0">
+        <div className="flex flex-col items-center justify-center p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800/80 min-w-0">
           <WindCompass
             angle={config.windDirDeg}
             onChange={(angle) => update({ windDirDeg: angle })}
             disabled={config.zeroWind}
             windSpeedMps={config.windSpeedMps}
+            t={tCompass}
           />
         </div>
 
         {/* Right Column: Speed, Toggles, and Route Reversal */}
         <div className="flex flex-col gap-3 min-w-0">
           {/* Toggle On/Off Zero Wind */}
-          <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2.5">
+          <div className="p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800/80 flex flex-col gap-2.5">
             {/* Line 1: Clear Description */}
             <div className="flex items-center gap-2">
               <div
                 className={`p-1.5 rounded-md shrink-0 ${
-                  config.zeroWind ? 'bg-rose-500/15 text-rose-400' : 'bg-teal-500/15 text-teal-400'
+                  config.zeroWind
+                    ? 'bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                    : 'bg-teal-100 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400'
                 }`}
               >
                 {config.zeroWind ? <CloudOff className="w-4 h-4" /> : <Wind className="w-4 h-4" />}
               </div>
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-xs font-semibold text-slate-200">
-                  Symulacja bezwietrzna
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  {t.zeroWindTitle}
                 </span>
                 <Tooltip
-                  title="Symulacja bezwietrzna (Zero Wind)"
-                  content="Wyzerowanie prędkości wiatru (0 m/s) na całej trasie. Pokazuje czysty potencjał wydolnościowy i wpływ samego profilu terenu na czas przejazdu."
-                  physicsNote="Eliminuje składową wiatru atmosferycznego. Prędkość wiatru pozornego równa się wówczas dokładnie prędkości kolarza."
+                  title={t.zeroWindTitle}
+                  content={t.zeroWindDesc}
                   position="bottom"
                 />
               </div>
@@ -169,31 +175,30 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             <button
               type="button"
               onClick={() => update({ zeroWind: !config.zeroWind })}
-              className={`w-full py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
+              className={`w-full py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] shadow-sm ${
                 config.zeroWind
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
-                  : 'bg-teal-500/20 text-teal-300 border border-teal-500/40 hover:bg-teal-500/30'
+                  ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-500/40 hover:bg-rose-200 dark:hover:bg-rose-500/30'
+                  : 'bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-500/40 hover:bg-teal-200 dark:hover:bg-teal-500/30'
               }`}
             >
-              {config.zeroWind ? 'BEZ WIATRU (0 m/s na trasie)' : 'Z WIATREM (WARUNKI REALNE)'}
+              {config.zeroWind ? '0 m/s' : t.zeroWindDesc}
             </button>
           </div>
 
           {/* Wind Speed Slider & Input */}
           <div
-            className={`p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2.5 transition-opacity ${
+            className={`p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800/80 flex flex-col gap-2.5 transition-opacity ${
               config.zeroWind ? 'opacity-40 pointer-events-none' : ''
             }`}
           >
             {/* Line 1: Clear Description */}
             <div className="flex items-center gap-1.5 min-w-0">
-              <label className="text-xs font-semibold text-slate-200">
-                Prędkość wiatru przy kolarzu
+              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                {t.windSpeedTitle}
               </label>
               <Tooltip
-                title="Prędkość wiatru przy kolarzu"
-                content="Prędkość wiatru rzeczywistego w m/s oraz km/h. Możesz wpisać dokładną wartość lub przesunąć suwak."
-                physicsNote="Prędkość wiatru ze stacji meteo (10 m) jest przeliczana profilem Hellmanna na wysokość kolarza (~1.5 m): v_cyclist = v_10 * (1.5/10)^0.2 ~ 0.68 * v_10."
+                title={t.windSpeedTooltipTitle}
+                content={t.windSpeedTooltipContent}
                 position="bottom"
               />
             </div>
@@ -208,11 +213,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                   step="0.1"
                   value={Number(config.windSpeedMps.toFixed(1))}
                   onChange={(e) => update({ windSpeedMps: parseFloat(e.target.value) || 0 })}
-                  className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-center font-mono text-teal-300 font-bold focus:outline-none focus:border-teal-500"
+                  className="w-16 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-center font-mono text-teal-600 dark:text-teal-300 font-bold focus:outline-none focus:border-teal-500"
                 />
-                <span className="text-xs text-slate-400 font-medium">m/s</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">m/s</span>
               </div>
-              <span className="text-xs text-teal-400 font-mono bg-slate-900 border border-slate-800 px-2.5 py-1 rounded">
+              <span className="text-xs text-teal-600 dark:text-teal-400 font-mono bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-2.5 py-1 rounded shadow-sm">
                 {(config.windSpeedMps * 3.6).toFixed(1)} km/h
               </span>
             </div>
@@ -226,9 +231,9 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 step="0.1"
                 value={config.windSpeedMps}
                 onChange={(e) => update({ windSpeedMps: parseFloat(e.target.value) })}
-                className="w-full accent-teal-500 cursor-pointer h-2 bg-slate-800 rounded-lg"
+                className="w-full accent-teal-500 cursor-pointer h-2 bg-slate-200 dark:bg-slate-800 rounded-lg"
               />
-              <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-mono px-0.5">
+              <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-mono px-0.5">
                 <span>0 m/s</span>
                 <span>5 m/s</span>
                 <span>10 m/s</span>
@@ -238,24 +243,25 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           </div>
 
           {/* Route Reversal Toggle */}
-          <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col gap-2.5">
+          <div className="p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800/80 flex flex-col gap-2.5">
             {/* Line 1: Clear Description */}
             <div className="flex items-center gap-2">
               <div
                 className={`p-1.5 rounded-md shrink-0 ${
-                  config.reverseRoute ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-400'
+                  config.reverseRoute
+                    ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                 }`}
               >
                 <ArrowRightLeft className="w-4 h-4" />
               </div>
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-xs font-semibold text-slate-200">
-                  Odwrócenie trasy („Jazda pod prąd”)
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  {t.reverseRouteTitle}
                 </span>
                 <Tooltip
-                  title="Odwróć trasę („Jazda pod prąd”)"
-                  content="Odwrócenie kolejności trasy GPS oraz znaków nachylenia terenu (podjazdy stają się zjazdami). Pozwala sprawdzić, jak zmieniłby się czas przy jeździe w przeciwnym kierunku."
-                  physicsNote="Umożliwia analizę taktyczną: czy na danej trasie pętlowej przy obecnym kierunku wiatru bardziej opłaca się jechać zgodnie czy przeciwnie do ruchu wskazówek zegara."
+                  title={t.reverseRouteTitle}
+                  content={t.reverseRouteDesc}
                   position="bottom"
                 />
               </div>
@@ -265,28 +271,28 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             <button
               type="button"
               onClick={() => update({ reverseRoute: !config.reverseRoute })}
-              className={`w-full py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] ${
+              className={`w-full py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.99] shadow-sm ${
                 config.reverseRoute
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                  : 'bg-slate-800 text-slate-300 hover:text-slate-100 border border-slate-700'
+                  ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40 hover:bg-amber-200 dark:hover:bg-amber-500/30'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 border border-slate-300 dark:border-slate-700'
               }`}
             >
-              {config.reverseRoute ? 'ODWRÓCONA (JAZDA POD PRĄD)' : 'NORMALNA (ZGODNIE Z KIERUNKIEM GPS)'}
+              {config.reverseRoute ? t.reverseRouteTitle : t.reverseRouteDesc}
             </button>
           </div>
         </div>
       </div>
 
       {/* Pacing Model Selector */}
-      <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80">
+      <div className="p-3 bg-slate-50 dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800/80">
         <div className="flex items-center gap-1.5 mb-2">
-          <Zap className="w-3.5 h-3.5 text-amber-400" />
-          <label className="text-xs font-semibold text-slate-300 block">
-            Model generowania mocy (Pacing)
+          <Zap className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+          <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
+            {t.pacingStrategyTitle}
           </label>
           <Tooltip
-            title="Strategie generowania mocy (Pacing)"
-            content="Wybór sposobu dystrybucji watów wzdłuż trasy w symulacji. Możesz porównać realny profil jazdy z idealnie równym wysiłkiem lub pacingiem adaptacyjnym."
+            title={t.pacingStrategyTooltipTitle}
+            content={t.pacingStrategyTooltipContent}
             position="bottom"
           />
         </div>
@@ -294,85 +300,67 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           {[
             {
               id: 'original',
-              label: 'Moc z pliku',
-              desc: 'Oryginalny profil watów',
-              tooltipTitle: 'Moc z pliku (Original Pacing)',
-              tooltipContent: 'Dokładny profil mocy z pliku FIT. Zastosowano wygładzenie okna oraz model bezwładności masy na zjazdach/coasting.',
+              label: t.pacingOriginal,
+              desc: t.pacingOriginalDesc,
             },
             {
               id: 'constant_avg',
-              label: 'Stała średnia',
-              desc: 'Równy wysiłek na trasie',
-              tooltipTitle: 'Stała średnia moc (Constant Avg)',
-              tooltipContent: 'Każdy odcinek pokonywany jest z dokładnie taką samą mocą równą średniej mocy z pliku FIT (tzw. jazda ergometryczna).',
+              label: t.pacingConstant,
+              desc: t.pacingConstantDesc,
             },
             {
               id: 'adaptive_slope',
-              label: 'Adaptacyjny',
-              desc: 'Mniej w dół, więcej w górę',
-              tooltipTitle: 'Pacing adaptacyjny (Adaptive Slope)',
-              tooltipContent: 'Więcej watów na stromych podjazdach, oszczędzanie energii na zjazdach (przy zachowaniu tej samej średniej mocy całkowitej trasy).',
-              tooltipPhysics: 'Fizyka kolarstwa: waty zainwestowane przy małej prędkości pod górę dają znacznie większy zysk czasowy niż te same waty na szybkim zjeździe.',
+              label: t.pacingAdaptive,
+              desc: t.pacingAdaptiveDesc,
             },
           ].map((mode) => (
             <div
               key={mode.id}
               onClick={() => update({ pacingMode: mode.id as any })}
-              className={`p-2 rounded border text-left cursor-pointer transition-all relative ${
+              className={`p-2 rounded-lg border text-left cursor-pointer transition-all relative shadow-sm ${
                 config.pacingMode === mode.id
-                  ? 'bg-teal-950/70 border-teal-500 text-slate-100 ring-1 ring-teal-500/40'
-                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800/70'
+                  ? 'bg-teal-50 dark:bg-teal-950/70 border-teal-500 text-slate-900 dark:text-slate-100 ring-1 ring-teal-500/40'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold">{mode.label}</span>
-                <Tooltip
-                  title={mode.tooltipTitle}
-                  content={mode.tooltipContent}
-                  physicsNote={mode.tooltipPhysics}
-                  position="top"
-                />
               </div>
-              <span className="text-[10px] text-slate-400 leading-tight block mt-0.5">{mode.desc}</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">{mode.desc}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Collapsible Advanced Cyclist Physics */}
-      <div className="border-t border-slate-800 pt-2">
+      <div className="border-t border-slate-200 dark:border-slate-800 pt-2">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 py-1"
+            className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 flex items-center gap-1.5 py-1 transition-colors"
           >
-            <Activity className="w-3.5 h-3.5 text-slate-400" />
-            <span>Zaawansowane parametry kolarza i sprzętu (Masa, CdA, Crr, Sprawność)</span>
+            <Activity className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+            <span>{t.advancedTitle} ({t.advancedSubtitle})</span>
             {showAdvanced ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
           </button>
           {showAdvanced && onResetAdvancedDefaults && (
             <button
               type="button"
               onClick={onResetAdvancedDefaults}
-              className="text-[11px] text-slate-400 hover:text-teal-300 underline transition-colors px-1"
-              title="Przywróć domyślne parametry (78kg, 0.32, 0.004, 0.97)"
+              className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-300 underline transition-colors px-1"
+              title={t.resetDefaults}
             >
-              Przywróć domyślne
+              {t.resetDefaults}
             </button>
           )}
         </div>
 
         {showAdvanced && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 p-3 bg-slate-950/80 rounded-lg border border-slate-800">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 p-3 bg-slate-50 dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-slate-400 block">Masa zestawu (kg)</label>
-                <Tooltip
-                  title="Masa całkowita zestawu (kg)"
-                  content="Łączna masa kolarza, roweru, bidonów, kasku, butów i osprzętu. Wpływa bezpośrednio na siłę grawitacji na podjazdach i bezwładność kinetyczną."
-                  position="top"
-                />
+                <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.massTitle}</label>
               </div>
               <input
                 type="number"
@@ -381,17 +369,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 max="200"
                 value={config.massKg}
                 onChange={(e) => update({ massKg: parseFloat(e.target.value) || 78 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-teal-500 shadow-sm"
               />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-slate-400 block">CdA oporu (m²)</label>
-                <Tooltip
-                  title="Współczynnik aerodynamiczny CdA (m²)"
-                  content="Iloczyn współczynnika oporu aerodynamicznego Cd i pola powierzchni czołowej A. Typowe wartości: TT/czasówka: 0.20-0.24, szosa dolny chwyt: 0.28-0.32, chwyt za klamki: 0.33-0.38, gravel/MTB: 0.38-0.45."
-                  position="top"
-                />
+                <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.cdaTitle}</label>
               </div>
               <input
                 type="number"
@@ -400,17 +383,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 max="0.9"
                 value={config.cda}
                 onChange={(e) => update({ cda: parseFloat(e.target.value) || 0.32 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-teal-500 shadow-sm"
               />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-slate-400 block">Opór toczenia Crr</label>
-                <Tooltip
-                  title="Współczynnik oporu toczenia Crr"
-                  content="Opór toczenia opon po asfalcie. Nowoczesne opony szosowe tubeless: ~0.003-0.004, opony treningowe z dętką: ~0.0045-0.0055, gravel: ~0.006-0.008."
-                  position="top"
-                />
+                <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.crrTitle}</label>
               </div>
               <input
                 type="number"
@@ -419,17 +397,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 max="0.02"
                 value={config.crr}
                 onChange={(e) => update({ crr: parseFloat(e.target.value) || 0.004 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-teal-500 shadow-sm"
               />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-slate-400 block">Sprawność napędu η</label>
-                <Tooltip
-                  title="Sprawność napędu łańcuchowego η"
-                  content="Ułamek energii mechanicznej przekazywanej z korby na tylne koło. Czysty, nasmarowany łańcuch szosowy ma sprawność rzędu 97-98% (0.97 - 0.98)."
-                  position="top"
-                />
+                <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.drivetrainLossTitle}</label>
               </div>
               <input
                 type="number"
@@ -438,7 +411,7 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 max="1.0"
                 value={config.eta}
                 onChange={(e) => update({ eta: parseFloat(e.target.value) || 0.97 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none focus:border-teal-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-teal-500 shadow-sm"
               />
             </div>
           </div>
@@ -455,12 +428,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         {isLoading ? (
           <>
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            <span>Przeliczanie modelu wektorowego...</span>
+            <span>Przeliczanie...</span>
           </>
         ) : (
           <>
             <Zap className="w-4 h-4 fill-white" />
-            <span>Przelicz symulację („What-If”)</span>
+            <span>{t.title}</span>
           </>
         )}
       </button>

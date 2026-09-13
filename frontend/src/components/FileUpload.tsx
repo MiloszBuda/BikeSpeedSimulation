@@ -1,11 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { UploadCloud, FileCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { Translations } from '../i18n/translations';
 
 interface FileUploadProps {
   onFileSelected: (file: File) => void;
   isLoading: boolean;
   fileName?: string;
   error?: string | null;
+  t: Translations['upload'];
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
@@ -13,6 +15,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   isLoading,
   fileName,
   error,
+  t,
 }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -50,10 +53,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`p-5 border-2 border-dashed rounded-xl cursor-pointer flex flex-col items-center justify-center gap-2 transition-all ${
+        className={`p-5 border-2 border-dashed rounded-xl cursor-pointer flex flex-col items-center justify-center gap-2 transition-all shadow-sm ${
           isDragging
-            ? 'border-teal-400 bg-teal-950/30'
-            : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/80'
+            ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/30'
+            : 'border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-900/80'
         }`}
       >
         <input
@@ -65,24 +68,24 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         />
 
         {isLoading ? (
-          <div className="flex items-center gap-2 text-teal-300 text-sm font-medium">
+          <div className="flex items-center gap-2 text-teal-600 dark:text-teal-300 text-sm font-medium">
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span>Parsowanie pliku .FIT i pobieranie pogody z Open-Meteo ERA5...</span>
+            <span>{t.parsing}</span>
           </div>
         ) : fileName ? (
-          <div className="flex items-center gap-2 text-emerald-300 text-sm font-medium">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-300 text-sm font-medium">
             <FileCheck className="w-5 h-5" />
-            <span>Wczytano: <b className="font-mono">{fileName}</b> (kliknij, aby zmienić plik)</span>
+            <span>{t.loaded} <b className="font-mono">{fileName}</b> <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">{t.clickToChange}</span></span>
           </div>
         ) : (
           <>
-            <UploadCloud className="w-8 h-8 text-teal-400" />
+            <UploadCloud className="w-8 h-8 text-teal-600 dark:text-teal-400" />
             <div className="text-center">
-              <span className="text-sm font-semibold text-slate-200 block">
-                Upuść tutaj plik aktywności <span className="text-teal-400 font-mono">.FIT</span> lub kliknij, aby wybrać
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 block">
+                {t.dropText} <span className="text-teal-600 dark:text-teal-400 font-mono">.FIT</span>
               </span>
-              <span className="text-xs text-slate-400">
-                Wspiera pliki Garmin / Wahoo / Hammerhead ze śladem GPS, mocą i prędkością
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {t.dropSubtext}
               </span>
             </div>
           </>
@@ -90,8 +93,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       </div>
 
       {error && (
-        <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-lg text-xs text-rose-300 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+        <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800/60 rounded-lg text-xs text-rose-800 dark:text-rose-300 flex items-center gap-2 shadow-sm">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
           <span>{error}</span>
         </div>
       )}

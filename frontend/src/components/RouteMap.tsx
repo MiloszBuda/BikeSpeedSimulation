@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { EnrichedPoint, SpatialPoint } from '../types/simulation';
+import { SpatialPoint } from '../types/simulation';
+import { Translations } from '../i18n/translations';
 
 // Fix standard Leaflet default icon paths in bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -14,6 +15,8 @@ L.Icon.Default.mergeOptions({
 interface RouteMapProps {
   spatialPoints: SpatialPoint[];
   hoveredIndex: number | null;
+  theme?: 'dark' | 'light';
+  t: Translations['map'];
 }
 
 // Helper component to auto-fit map view to route bounds
@@ -30,6 +33,8 @@ const FitBounds: React.FC<{ bounds: L.LatLngBoundsExpression }> = ({ bounds }) =
 export const RouteMap: React.FC<RouteMapProps> = ({
   spatialPoints,
   hoveredIndex,
+  theme = 'dark',
+  t,
 }) => {
   const coordinates = useMemo(() => {
     return spatialPoints.map((p) => [p.lat, p.lon] as [number, number]);
@@ -73,8 +78,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
   if (coordinates.length === 0 || !bounds) {
     return (
-      <div className="h-[380px] bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-slate-500 text-sm">
-        Brak danych trasy GPS do wyświetlenia mapy
+      <div className="h-[380px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-slate-500 text-sm">
+        {t.noGps}
       </div>
     );
   }
@@ -85,37 +90,41 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     ? [spatialPoints[hoveredIndex].lat, spatialPoints[hoveredIndex].lon] as [number, number]
     : null;
 
+  const tileUrl = theme === 'dark'
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col gap-2">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-lg flex flex-col gap-2 transition-colors duration-200">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          Mapa trasy i wektory wiatru
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          {t.title}
         </h3>
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Wiatr czołowy
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> {t.headwind}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Boczny
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> {t.crosswind}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> W plecy
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> {t.tailwind}
           </span>
         </div>
       </div>
 
-      <div className="w-full h-[360px] rounded-lg overflow-hidden border border-slate-800 relative">
+      <div className="w-full h-[360px] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 relative">
         <MapContainer
+          key={theme}
           center={startPt}
           zoom={13}
           scrollWheelZoom={true}
           className="w-full h-full"
         >
-          {/* CartoDB Dark Matter tiles */}
           <TileLayer
             attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            url={tileUrl}
           />
 
           <FitBounds bounds={bounds} />
@@ -133,8 +142,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           <Marker position={startPt}>
             <Popup>
               <div className="text-xs">
-                <b>Start trasy</b><br />
-                Wysokość: {spatialPoints[0].elevation_m} m
+                <b>{t.start}</b><br />
+                {t.elevation} {spatialPoints[0].elevation_m} m
               </div>
             </Popup>
           </Marker>
@@ -143,8 +152,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           <Marker position={endPt}>
             <Popup>
               <div className="text-xs">
-                <b>Meta trasy</b><br />
-                Dystans: {(spatialPoints[spatialPoints.length - 1].distance_m / 1000).toFixed(2)} km
+                <b>{t.finish}</b><br />
+                {t.distance} {(spatialPoints[spatialPoints.length - 1].distance_m / 1000).toFixed(2)} km
               </div>
             </Popup>
           </Marker>
@@ -154,8 +163,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             <Marker position={hoveredPt}>
               <Popup>
                 <div className="text-xs">
-                  Prędkość: {spatialPoints[hoveredIndex!].simulated_speed_kmh.toFixed(1)} km/h<br />
-                  Wysokość: {spatialPoints[hoveredIndex!].elevation_m.toFixed(1)} m
+                  {t.speed} {spatialPoints[hoveredIndex!].simulated_speed_kmh.toFixed(1)} km/h<br />
+                  {t.elevation} {spatialPoints[hoveredIndex!].elevation_m.toFixed(1)} m
                 </div>
               </Popup>
             </Marker>

@@ -2,11 +2,13 @@ import React from 'react';
 import { Clock, Zap, Gauge, Mountain } from 'lucide-react';
 import { SimulationSummary, FitSummary } from '../types/simulation';
 import { Tooltip } from './Tooltip';
+import { Translations } from '../i18n/translations';
 
 interface SummaryCardsProps {
   simulationSummary: SimulationSummary | null;
   fitSummary: FitSummary;
   cda: number;
+  t: Translations['summary'];
 }
 
 const formatSeconds = (totalSec: number) => {
@@ -20,6 +22,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
   simulationSummary,
   fitSummary,
   cda,
+  t,
 }) => {
   const deltaSeconds = simulationSummary?.time_delta_s ?? 0;
   const isZeroDelta = Math.abs(deltaSeconds) < 0.5;
@@ -47,130 +50,130 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Delta Czasu Card */}
-      <div className={`p-4 rounded-xl border relative ${
+      <div className={`p-4 rounded-xl border relative shadow-sm transition-colors duration-200 ${
         simulationSummary
           ? isZeroDelta
-            ? 'bg-slate-900 border-slate-800 text-slate-100'
+            ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
             : isFaster
-            ? 'bg-emerald-950/30 border-emerald-800/60 text-emerald-100'
-            : 'bg-rose-950/30 border-rose-800/60 text-rose-100'
-          : 'bg-slate-900 border-slate-800 text-slate-100'
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/60 text-emerald-950 dark:text-emerald-100'
+            : 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800/60 text-rose-950 dark:text-rose-100'
+          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
       }`}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Zysk / Strata Czasu
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {t.timeGainLoss}
             </span>
             <Tooltip
-              title="Zysk / Strata Czasu (Delta T)"
-              content="Różnica między czasem bazowym trasy (z pliku FIT) a czasem uzyskanym w symulacji (T_baza - T_sym). Wartość zielona oznacza czas zaoszczędzony (szybciej), czerwona stratę (wolniej), a 0s brak zmiany warunków."
-              physicsNote="Na trasie zamkniętej (pętla) wiatr ZAWSZE powoduje stratę netto czasu. Opór powietrza rośnie z kwadratem prędkości (Faero ~ v²), a pod wiatr jedziesz wolniej, więc spędzasz na tym odcinku znacznie więcej czasu niż na szybkim powrocie z wiatrem w plecy."
+              title={t.timeGainTooltipTitle}
+              content={t.timeGainTooltipContent}
+              physicsNote={t.timeGainTooltipPhysics}
               position="bottom"
             />
           </div>
-          <Clock className={`w-4 h-4 ${isZeroDelta ? 'text-teal-400' : isFaster ? 'text-emerald-400' : 'text-rose-400'}`} />
+          <Clock className={`w-4 h-4 ${isZeroDelta ? 'text-teal-600 dark:text-teal-400' : isFaster ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} />
         </div>
         <div className="flex items-baseline gap-2">
           <span className={`text-2xl font-black font-mono ${
-            isZeroDelta ? 'text-teal-300' : isFaster ? 'text-emerald-400' : 'text-rose-400'
+            isZeroDelta ? 'text-teal-600 dark:text-teal-300' : isFaster ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
           }`}>
             {simulationSummary ? (isZeroDelta ? '0m 00s' : isFaster ? `-${deltaFormatted}` : `+${deltaFormatted}`) : '--'}
           </span>
-          <span className="text-xs text-slate-400">
-            {simulationSummary ? (isZeroDelta ? '(zgodny z bazą)' : isFaster ? 'szybciej' : 'wolniej') : ''}
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {simulationSummary ? (isZeroDelta ? t.timeMatchBase : isFaster ? t.timeFaster : t.timeSlower) : ''}
           </span>
         </div>
-        <div className="text-[11px] text-slate-400 mt-2 flex justify-between border-t border-slate-800/60 pt-1.5 font-mono">
-          <span>Baza: {formatSeconds(baseTimeSec)}</span>
-          <span>Sym: {formatSeconds(simTimeSec)}</span>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 flex justify-between border-t border-slate-200 dark:border-slate-800/60 pt-1.5 font-mono">
+          <span>{t.baseTime}: {formatSeconds(baseTimeSec)}</span>
+          <span>{t.simTime}: {formatSeconds(simTimeSec)}</span>
         </div>
       </div>
 
       {/* 2. Ekwiwalent Mocy Card */}
-      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100 relative">
+      <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 relative shadow-sm transition-colors duration-200">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Ekwiwalent Mocy
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {t.eqPower}
             </span>
             <Tooltip
-              title="Ekwiwalent Mocy (Equivalent Power)"
-              content="Średnia moc kolarza w watach, jaka byłaby wymagana w nowych warunkach atmosferycznych, aby pokonać trasę w dokładnie takim samym czasie jak w przejeździe bazowym."
-              physicsNote="Wyliczany numerycznie metodą bisekcji na równaniu bilansu mocy i oporów Chunga z zachowaniem kinetyki bezwładności masy kolarza i roweru na zjazdach."
+              title={t.eqPowerTooltipTitle}
+              content={t.eqPowerTooltipContent}
+              physicsNote={t.eqPowerTooltipPhysics}
               position="bottom"
             />
           </div>
-          <Zap className="w-4 h-4 text-amber-400" />
+          <Zap className="w-4 h-4 text-amber-500 dark:text-amber-400" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-black font-mono text-amber-300">
+          <span className="text-2xl font-black font-mono text-amber-600 dark:text-amber-300">
             {eqPowerW} W
           </span>
-          <span className="text-xs text-slate-400 font-mono">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
             ({powerDiff >= 0 ? '+' : ''}{powerDiff} W)
           </span>
         </div>
-        <div className="text-[11px] text-slate-400 mt-2 border-t border-slate-800/60 pt-1.5">
-          {isZeroDelta ? 'Moc zgodna z bazową z pliku' : 'Moc potrzebna do zachowania czasu bazowego'}
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 border-t border-slate-200 dark:border-slate-800/60 pt-1.5">
+          {isZeroDelta ? t.eqPowerMatch : t.eqPowerRequired}
         </div>
       </div>
 
       {/* 3. Prędkość Symulowana vs Bazowa */}
-      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100 relative">
+      <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 relative shadow-sm transition-colors duration-200">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Średnia Prędkość
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {t.avgSpeed}
             </span>
             <Tooltip
-              title="Prędkość i Dystans"
-              content="Porównanie średniej prędkości uzyskanej z modelu symulacyjnego z rzeczywistą średnią prędkością zarejestrowaną w pliku FIT."
-              physicsNote="Model przelicza wektorowo kąt wiatru pozornego (apparent wind) i opór aerodynamiczny dla każdego 5-metrowego odcinka trasy."
+              title={t.avgSpeedTooltipTitle}
+              content={t.avgSpeedTooltipContent}
+              physicsNote={t.avgSpeedTooltipPhysics}
               position="bottom"
             />
           </div>
-          <Gauge className="w-4 h-4 text-teal-400" />
+          <Gauge className="w-4 h-4 text-teal-600 dark:text-teal-400" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-black font-mono text-teal-300">
+          <span className="text-2xl font-black font-mono text-teal-600 dark:text-teal-300">
             {simSpeedKmh.toFixed(1)}
           </span>
-          <span className="text-xs text-slate-400">km/h</span>
-          <span className="text-xs text-slate-500 font-mono">
-            (baza: {baseSpeedKmh.toFixed(1)})
+          <span className="text-xs text-slate-500 dark:text-slate-400">km/h</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+            ({t.baseSpeed}: {baseSpeedKmh.toFixed(1)})
           </span>
         </div>
-        <div className="text-[11px] text-slate-400 mt-2 flex justify-between border-t border-slate-800/60 pt-1.5 font-mono">
-          <span>Dystans: {(fitSummary.total_distance_m / 1000).toFixed(2)} km</span>
-          <span>Max: {fitSummary.max_speed_kmh.toFixed(1)} km/h</span>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 flex justify-between border-t border-slate-200 dark:border-slate-800/60 pt-1.5 font-mono">
+          <span>{t.distance}: {(fitSummary.total_distance_m / 1000).toFixed(2)} km</span>
+          <span>{t.maxSpeed}: {fitSummary.max_speed_kmh.toFixed(1)} km/h</span>
         </div>
       </div>
 
       {/* 4. Model Fizyczny & Przewyższenie */}
-      <div className="p-4 rounded-xl border bg-slate-900 border-slate-800 text-slate-100 relative">
+      <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 relative shadow-sm transition-colors duration-200">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Model & Przewyższenie
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {t.modelElevation}
             </span>
             <Tooltip
-              title="Parametry Fizyczne i Moc Znormalizowana"
-              content="CdA: Współczynnik oporu aerodynamicznego × pole powierzchni czołowej [m²]. Przewyższenie: Sumaryczne podjazdy wygładzone filtrem Savitzky-Golay usuwającym szum barometryczny. NP: Znormalizowana moc fizjologiczna (wg algorytmu dr. Andrew Coggana)."
-              physicsNote="Moc znormalizowana NP uwzględnia fizjologiczny koszt szarpanej jazdy (podnoszenie mocy do 4. potęgi) w odróżnieniu od prostej średniej arytmetycznej."
+              title={t.modelElevationTooltipTitle}
+              content={t.modelElevationTooltipContent}
+              physicsNote={t.modelElevationTooltipPhysics}
               position="bottom"
             />
           </div>
-          <Mountain className="w-4 h-4 text-indigo-400" />
+          <Mountain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-black font-mono text-indigo-300">
+          <span className="text-2xl font-black font-mono text-indigo-600 dark:text-indigo-300">
             +{Math.round(fitSummary.total_elevation_gain_m)} m
           </span>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             (-{Math.round(fitSummary.total_elevation_loss_m)} m)
           </span>
         </div>
-        <div className="text-[11px] text-slate-400 mt-2 flex justify-between border-t border-slate-800/60 pt-1.5 font-mono">
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 flex justify-between border-t border-slate-200 dark:border-slate-800/60 pt-1.5 font-mono">
           <span>CdA: {cda.toFixed(3)} m²</span>
           <span>NP: {fitSummary.normalized_power_w ? `${Math.round(fitSummary.normalized_power_w)} W` : '--'}</span>
         </div>

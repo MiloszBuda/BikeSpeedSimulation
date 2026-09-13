@@ -208,8 +208,15 @@ Jeżeli $w_{\text{sim}} = w_{\text{base}}$, to z definicji $v_{\text{target}} = 
 
 Zawodnik nie przeskakuje do nowej prędkości natychmiastowo, lecz dąży do niej z inercją pierwszego rzędu:
 
-$$\Delta v_{\text{target}} = \operatorname{clip}(v_{\text{target}} - v_{\text{base}}, -\text{max\_dev}, +\text{max\_dev})$$
+$$
+\Delta v_{\text{target}} = \begin{cases} 
+-\text{max}\_\text{dev}, & \text{gdy } v_{\text{target}} - v_{\text{base}} < -\text{max}\_\text{dev} \\
+v_{\text{target}} - v_{\text{base}}, & \text{gdy } |v_{\text{target}} - v_{\text{base}}| \le \text{max}\_\text{dev} \\
++\text{max}\_\text{dev}, & \text{gdy } v_{\text{target}} - v_{\text{base}} > \text{max}\_\text{dev}
+\end{cases}
+$$
 
+* $\text{max}\_\text{dev} = 16.0\text{ km/h}$ (maksymalne dopuszczalne odchylenie od prędkości bazowej).
 $$\alpha_{\text{inertia}} = 1.0 - \exp\left(-\frac{dt}{\tau}\right)$$
 
 $$\Delta v_{\text{raw}} = \Delta v + \alpha_{\text{inertia}} \cdot (\Delta v_{\text{target}} - \Delta v)$$
@@ -223,7 +230,7 @@ Parametry kalibracyjne silnika:
 - $\tau = 2.0\text{ s}$ (czas reakcji układu kolarz-rower),
 - $a_{\text{accel}} = 0.9\text{ m/s}^2$ (maksymalne przyspieszenie w sprincie),
 - $a_{\text{decel}} = 1.8\text{ m/s}^2$ (komfortowe wytracanie prędkości),
-- $\text{max\_dev} = 16.0\text{ km/h}$ (maksymalne dopuszczalne odchylenie od prędkości bazowej).
+- $\text{max}_\text{dev} = 16.0\text{ km/h}$ (maksymalne dopuszczalne odchylenie od prędkości bazowej).
 
 #### Krok 4: Stabilizacja na stromych zjazdach i w strefie coasting ($P = 0\text{ W}$)
 

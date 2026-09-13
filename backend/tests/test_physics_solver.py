@@ -179,13 +179,13 @@ def test_simulate_original_pacing_tailwind_sprint_slows_in_calm_air():
     )
 
     sim_kmh = v_sim * 3.6
-    # Simulated speed must be slightly lower than 43 km/h, NOT exploding to 60-80 km/h
+    # Simulated speed must slow down realistically from 43 km/h when tailwind is removed, NOT exploding to 60-80 km/h
     assert np.all(sim_kmh <= 43.0 + 1e-4)
-    assert 40.0 < sim_kmh[-1] < 42.5
+    assert 32.0 < sim_kmh[-1] < 36.0
 
 
 def test_simulate_original_pacing_headwind_speeds_up_in_calm_air():
-    """Verify that a 35 km/h ride into 4 m/s headwind accelerates smoothly in calm air."""
+    """Verify that a 35 km/h ride into 4 m/s headwind accelerates smoothly to physical equilibrium in calm air."""
     n = 100
     v_base = np.full(n, 35.0 / 3.6)
     bearing = np.zeros(n)
@@ -211,13 +211,13 @@ def test_simulate_original_pacing_headwind_speeds_up_in_calm_air():
     )
 
     sim_kmh = v_sim * 3.6
-    # Simulated speed should smoothly accelerate above 35 km/h
+    # Simulated speed should smoothly accelerate above 35 km/h to physical equilibrium (~43.7 km/h)
     assert np.all(sim_kmh >= 35.0 - 1e-4)
-    assert 37.0 < sim_kmh[-1] < 40.0
+    assert 42.0 < sim_kmh[-1] < 45.0
 
 
 def test_simulate_original_pacing_braking_descent_stays_controlled():
-    """Verify that a 22 km/h braking descent remains at ~22 km/h in calm air, with no runaway acceleration."""
+    """Verify that a 22 km/h braking descent remains controlled in calm air, with no runaway acceleration."""
     n = 100
     v_base = np.full(n, 22.0 / 3.6)
     bearing = np.zeros(n)
@@ -239,10 +239,43 @@ def test_simulate_original_pacing_braking_descent_stays_controlled():
         mass=85.0,
         cda=0.32,
         dx=5.0,
+        slope=np.full(n, -0.04),
     )
 
     sim_kmh = v_sim * 3.6
-    # Speeds must stay tightly controlled within ~1 km/h of baseline, NOT blow up to 50-60 km/h!
-    assert np.all(sim_kmh < 25.0)
-    assert np.all(sim_kmh > 20.0)
+    # Speeds must stay tightly controlled within ~4 km/h of baseline, NOT blow up to 50-60 km/h!
+    assert np.all(sim_kmh < 28.0)
+    assert np.all(sim_kmh >= 22.0 - 1e-4)
+
+
+def test_simulate_original_pacing_220w_flat_headwind_removal_reaches_full_delta():
+    """Verify that removing a 6 m/s headwind at 220W on flat road reaches ~35.5 km/h (+12 km/h delta)."""
+    n = 1920  # ~9.6 km
+    dx = 5.0
+    v_base = np.full(n, 23.32 / 3.6)
+    bearing = np.zeros(n)
+    base_wind_speed = np.full(n, 6.0)
+    base_wind_dir = np.zeros(n)
+    sim_wind_speed = np.zeros(n)
+    sim_wind_dir = np.zeros(n)
+    rho = np.full(n, 1.20)
+
+    v_sim = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind_speed,
+        base_wind_dir_deg=base_wind_dir,
+        sim_wind_speed=sim_wind_speed,
+        sim_wind_dir_deg=sim_wind_dir,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=dx,
+    )
+
+    final_speed_kmh = float(v_sim[-1] * 3.6)
+    delta_kmh = final_speed_kmh - 23.32
+    # Must reach the full ~12.1 km/h physical delta, NOT being clamped to +4 km/h!
+    assert math.isclose(final_speed_kmh, 35.45, abs_tol=0.5)
+    assert math.isclose(delta_kmh, 12.13, abs_tol=0.5)
 

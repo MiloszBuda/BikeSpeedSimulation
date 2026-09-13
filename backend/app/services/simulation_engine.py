@@ -203,10 +203,12 @@ class SimulationEngine:
                 rho=x_rho,
                 mass=request.mass_kg,
                 cda=request.cda,
+                crr=request.crr,
+                slope=x_slope,
                 dx=dx,
-                max_deviation_kmh=8.0,
-                max_accel_mps2=0.6,
-                deviation_response_time_s=4.0,
+                max_deviation_kmh=16.0,
+                max_accel_mps2=0.9,
+                deviation_response_time_s=2.0,
             )
 
             v_sim_clean = np.maximum(v_sim, 0.5)

@@ -428,9 +428,9 @@ def test_simulation_sprint_power_bounded_and_no_explosive_speed_jump():
     max_sim_speed = max(sim_speeds)
 
     # 1. Under Zero Wind (removing the 1.9 m/s tailwind), the simulated rider experiences more drag,
-    # so max speed must be slightly lower than baseline 43.0 km/h (around 41.5-42.5 km/h),
+    # so max speed must be lower than baseline 43.0 km/h (around 38-40 km/h),
     # and definitively NOT explode to 50+ or 80 km/h!
-    assert 40.0 < max_sim_speed <= 43.0, f"Max speed {max_sim_speed:.1f} km/h should be slightly below baseline 43.0 km/h"
+    assert 37.0 < max_sim_speed <= 43.0, f"Max speed {max_sim_speed:.1f} km/h should be below baseline 43.0 km/h"
 
     # 2. Acceleration check: over any 50m window (10 spatial steps of 5m), speed delta cannot exceed 15 km/h
     for k in range(len(sim_speeds) - 10):

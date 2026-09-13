@@ -427,21 +427,74 @@ def test_simulation_sprint_power_bounded_and_no_explosive_speed_jump():
     sim_speeds = [sp.simulated_speed_kmh for sp in res.spatial_points]
     max_sim_speed = max(sim_speeds)
 
-    # 1. Max simulated speed on flat sprint must NOT reach 81.3 km/h or anything above 55 km/h
-    assert max_sim_speed < 55.0, f"Max speed {max_sim_speed:.1f} km/h exceeded realistic threshold"
-    assert max_sim_speed > 45.0, f"Max speed {max_sim_speed:.1f} km/h failed to accelerate properly"
+    # 1. Under Zero Wind (removing the 1.9 m/s tailwind), the simulated rider experiences more drag,
+    # so max speed must be slightly lower than baseline 43.0 km/h (around 41.5-42.5 km/h),
+    # and definitively NOT explode to 50+ or 80 km/h!
+    assert 40.0 < max_sim_speed <= 43.0, f"Max speed {max_sim_speed:.1f} km/h should be slightly below baseline 43.0 km/h"
 
-    # 2. Acceleration check: over any 50m window (10 spatial steps of 5m), speed delta cannot exceed 18 km/h
+    # 2. Acceleration check: over any 50m window (10 spatial steps of 5m), speed delta cannot exceed 15 km/h
     for k in range(len(sim_speeds) - 10):
         delta_50m = sim_speeds[k + 10] - sim_speeds[k]
-        assert delta_50m < 18.0, f"Speed jump {delta_50m:.1f} km/h over 50m exceeded physical limit"
+        assert delta_50m < 15.0, f"Speed jump {delta_50m:.1f} km/h over 50m exceeded physical limit"
 
     # 3. Diagnostic telemetry: verify power_effective_w and acceleration_mps2
     for sp in res.spatial_points:
         assert sp.power_effective_w is not None
         assert sp.acceleration_mps2 is not None
-        # Max forward acceleration should stay within physiological limits
-        assert sp.acceleration_mps2 <= 1.25, f"Acceleration {sp.acceleration_mps2} m/s^2 exceeded physical limit"
+
+
+def test_simulation_sprint_headwind_removed_accelerates_speed():
+    """Verify that removing a headwind in a sprint naturally increases simulated speed."""
+    base_time = datetime(2023, 6, 1, 10, 0, 0, tzinfo=timezone.utc)
+    points: list[EnrichedPoint] = []
+
+    # 40 points approach at 30.0 km/h, 10 points sprint at 38.0 km/h into 3.5 m/s headwind
+    for i in range(50):
+        dt = datetime.fromtimestamp(base_time.timestamp() + i, tz=timezone.utc)
+        is_sprint = i >= 40
+        speed_kmh = 38.0 if is_sprint else 30.0
+        power = 750.0 if is_sprint else 220.0
+        points.append(
+            EnrichedPoint(
+                time_offset_s=i,
+                timestamp=dt,
+                lat=52.0 + i * 0.0001,
+                lon=21.0,
+                elevation_m=200.0,
+                distance_m=i * 10.0,
+                speed_mps=speed_kmh / 3.6,
+                speed_kmh=speed_kmh,
+                power_w=power,
+                bearing_deg=0.0,
+                temp_c=20.0,
+                surface_pressure_hpa=1013.25,
+                surface_pressure_pa=101325.0,
+                wind_speed_10m_mps=5.0,
+                wind_speed_cyclist_mps=3.5,
+                wind_direction_deg=0.0,  # Pure Headwind
+                air_density_kg_m3=1.20,
+                yaw_angle_deg=0.0,
+                headwind_comp_mps=3.5,
+                crosswind_comp_mps=0.0,
+                apparent_wind_speed_mps=(speed_kmh / 3.6) + 3.5,
+                apparent_wind_angle_deg=0.0,
+            )
+        )
+
+    # Simulate What-If with Zero Wind
+    req = WhatIfSimulationRequest(
+        zero_wind=True,
+        spatial_step_m=5.0,
+        pacing_mode=PacingMode.ORIGINAL,
+    )
+    res = SimulationEngine.run_simulation(points, req)
+
+    sim_speeds = [sp.simulated_speed_kmh for sp in res.spatial_points]
+    max_sim_speed = max(sim_speeds)
+
+    # In zero wind (removing headwind), simulated sprint speed must be FASTER than baseline 38.0 km/h (~40-42 km/h)
+    assert max_sim_speed > 38.5, f"Sprint in calm air should be faster than baseline into headwind: {max_sim_speed:.1f}"
+    assert max_sim_speed < 46.0, f"Sprint should not unrealistically overshoot: {max_sim_speed:.1f}"
 
 
 

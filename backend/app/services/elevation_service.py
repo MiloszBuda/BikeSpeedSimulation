@@ -69,7 +69,7 @@ class ElevationService:
     def calculate_slope_from_distance(
         elevation_m: np.ndarray,
         distance_m: np.ndarray,
-        max_slope: float = 0.35,
+        max_slope: float = 0.25,
     ) -> np.ndarray:
         """
         Calculate ground slope s = dh / dx with respect to cumulative wheel distance x.

@@ -5,6 +5,48 @@ import numpy as np
 
 from app.config import settings
 
+# Hard physical safety valve for numerical power balance equilibrium solvers
+V_SAFETY_CEILING_MPS = 30.0  # ~108 km/h
+V_FLOOR_MPS = 0.0
+
+_N_SCAN = 96      # coarse bracketing points used to locate the physical root
+_N_BISECT = 30    # bisection refinement iterations (<< 1 mm/s precision)
+
+
+def _largest_root_bisection(f_broadcast, f_pointwise, n_points: int, v_max: float, v_min: float = 0.0) -> np.ndarray:
+    """
+    Find, for every one of `n_points` independent problems, the largest
+    non-negative root of a per-point residual function f(v) in [v_min, v_max].
+    Always taking the right-most upward sign-crossing picks the physically-stable
+    equilibrium on steep descents instead of an unstable low-speed zero crossing.
+    """
+    v_scan = np.linspace(v_min, v_max, _N_SCAN)
+    F = f_broadcast(v_scan)  # (n_scan, n_points)
+
+    up_cross = (F[:-1, :] <= 0) & (F[1:, :] > 0)  # (n_scan - 1, n_points)
+    has_cross = up_cross.any(axis=0)
+
+    # Right-most True along axis 0, vectorized: reverse, take first True from bottom, map back
+    rev = up_cross[::-1, :]
+    first_from_bottom = np.argmax(rev, axis=0)
+    idx = (_N_SCAN - 2) - first_from_bottom
+
+    lo = v_scan[idx]
+    hi = v_scan[np.minimum(idx + 1, _N_SCAN - 1)]
+
+    no_cross_fallback = np.where(F[-1, :] <= 0, v_max, v_min)
+    lo = np.where(has_cross, lo, no_cross_fallback)
+    hi = np.where(has_cross, hi, no_cross_fallback)
+
+    for _ in range(_N_BISECT):
+        mid = 0.5 * (lo + hi)
+        f_mid = f_pointwise(mid)
+        go_right = f_mid <= 0
+        lo = np.where(go_right, mid, lo)
+        hi = np.where(go_right, hi, mid)
+
+    return 0.5 * (lo + hi)
+
 
 class PhysicsSolver:
     """Numerical solver for continuous distance-domain cycling simulation and power balance equations."""
@@ -251,6 +293,92 @@ class PhysicsSolver:
         return speed
 
     @staticmethod
+    def simulate_original_pacing(
+        baseline_speed: np.ndarray,
+        bearing_deg: np.ndarray,
+        base_wind_speed: np.ndarray,
+        base_wind_dir_deg: np.ndarray,
+        sim_wind_speed: np.ndarray,
+        sim_wind_dir_deg: np.ndarray,
+        rho: np.ndarray,
+        mass: float,
+        cda: float,
+        dx: float,
+        max_deviation_kmh: float = 8.0,
+        max_accel_mps2: float = 0.6,
+        deviation_response_time_s: float = 4.0,
+    ) -> np.ndarray:
+        """
+        ORIGINAL pacing model: aerodynamic perturbation solver.
+        The recorded FIT speed is the baseline trajectory that already incorporates
+        the athlete's pedal power, grade, braking, cornering, and cadence limitations.
+        Only the aerodynamic force difference between simulated wind and baseline wind
+        modifies the speed, smoothly bounded by response time tau and max deviation.
+        Prevents sprint power overshoots and downhill zero-watt freefall runaway.
+        """
+        baseline_speed = np.asarray(baseline_speed, dtype=np.float64)
+        bearing_deg = np.asarray(bearing_deg, dtype=np.float64)
+        base_wind_speed = np.asarray(base_wind_speed, dtype=np.float64)
+        base_wind_dir_deg = np.asarray(base_wind_dir_deg, dtype=np.float64)
+        sim_wind_speed = np.asarray(sim_wind_speed, dtype=np.float64)
+        sim_wind_dir_deg = np.asarray(sim_wind_dir_deg, dtype=np.float64)
+        rho = np.asarray(rho, dtype=np.float64)
+
+        n = len(baseline_speed)
+        if n == 0:
+            return np.array([], dtype=np.float64)
+        if n == 1:
+            return np.array([max(0.5, float(baseline_speed[0]))], dtype=np.float64)
+
+        speed = np.zeros(n, dtype=np.float64)
+        speed[0] = max(0.5, float(baseline_speed[0]))
+
+        bearing_rad = np.radians(bearing_deg)
+        base_beta = np.radians(base_wind_dir_deg) - bearing_rad
+        sim_beta = np.radians(sim_wind_dir_deg) - bearing_rad
+
+        base_w_parallel = base_wind_speed * np.cos(base_beta)
+        base_w_perpendicular = base_wind_speed * np.sin(base_beta)
+
+        sim_w_parallel = sim_wind_speed * np.cos(sim_beta)
+        sim_w_perpendicular = sim_wind_speed * np.sin(sim_beta)
+
+        max_deviation = max_deviation_kmh / 3.6
+        delta_v = 0.0
+
+        for i in range(1, n):
+            v_base = float(baseline_speed[i])
+            v_prev = speed[i - 1]
+            dt = max(0.05, dx / max(v_prev, 0.5))
+
+            # 1. Aerodynamic force in baseline recorded conditions
+            base_head = v_prev + base_w_parallel[i - 1]
+            base_app = math.sqrt(base_head * base_head + base_w_perpendicular[i - 1] * base_w_perpendicular[i - 1])
+            f_aero_base = 0.5 * float(rho[i - 1]) * cda * base_app * base_head
+
+            # 2. Aerodynamic force in simulated What-If conditions
+            sim_head = v_prev + sim_w_parallel[i - 1]
+            sim_app = math.sqrt(sim_head * sim_head + sim_w_perpendicular[i - 1] * sim_w_perpendicular[i - 1])
+            f_aero_sim = 0.5 * float(rho[i - 1]) * cda * sim_app * sim_head
+
+            # 3. Aerodynamic differential force and acceleration
+            delta_f_aero = f_aero_sim - f_aero_base
+            aero_accel = -delta_f_aero / mass
+            aero_accel = max(-max_accel_mps2, min(max_accel_mps2, aero_accel))
+
+            # 4. Steady-state perturbation tracking with smooth inertia lag
+            alpha = 1.0 - math.exp(-dt / max(deviation_response_time_s, 0.1))
+            target_delta_v = aero_accel * deviation_response_time_s
+            target_delta_v = max(-max_deviation, min(max_deviation, target_delta_v))
+
+            delta_v = delta_v + alpha * (target_delta_v - delta_v)
+            delta_v = max(-max_deviation, min(max_deviation, delta_v))
+
+            speed[i] = max(0.5, v_base + delta_v)
+
+        return speed
+
+    @staticmethod
     def solve_v0_vectorized(
         P: np.ndarray,
         s: np.ndarray,
@@ -260,11 +388,12 @@ class PhysicsSolver:
         rho: np.ndarray = None,
         eta: float = settings.DEFAULT_ETA,
         g: float = settings.GRAVITY,
-        iterations: int = 7,
+        iterations: int = _N_BISECT,
     ) -> np.ndarray:
         """
         Solve cubic power balance equation in zero-wind conditions (v_app = v_0):
         1/2 * rho * CdA * v_0^3 + m * g * (Crr + s) * v_0 - P * eta = 0
+        Uses vectorized bracket-and-bisect to guarantee physical convergence on all gradients.
         """
         P = np.asarray(P, dtype=np.float64)
         s = np.asarray(s, dtype=np.float64)
@@ -277,18 +406,16 @@ class PhysicsSolver:
         a = 0.5 * rho * CdA
         c = m * g * (Crr + s)
         d = np.maximum(P * eta, 0.0)
+        n = len(P)
 
-        # Initial guess (~30 km/h = 8.33 m/s)
-        v = np.full_like(P, 8.0)
+        def f_broadcast(v_scan: np.ndarray) -> np.ndarray:
+            return a[None, :] * v_scan[:, None] ** 3 + c[None, :] * v_scan[:, None] - d[None, :]
 
-        for _ in range(iterations):
-            f = a * v**3 + c * v - d
-            f_prime = 3.0 * a * v**2 + c
-            # Safeguard against zero or near-zero derivative on steep descents
-            f_prime = np.where(np.abs(f_prime) < 1e-5, 1e-5, f_prime)
-            v -= f / f_prime
+        def f_pointwise(v: np.ndarray) -> np.ndarray:
+            return a * v**3 + c * v - d
 
-        return np.maximum(v, 0.0)
+        v = _largest_root_bisection(f_broadcast, f_pointwise, n, V_SAFETY_CEILING_MPS, V_FLOOR_MPS)
+        return np.clip(v, V_FLOOR_MPS, V_SAFETY_CEILING_MPS)
 
     @staticmethod
     def solve_speed_arbitrary_wind(
@@ -303,11 +430,12 @@ class PhysicsSolver:
         rho: np.ndarray = None,
         eta: float = settings.DEFAULT_ETA,
         g: float = settings.GRAVITY,
-        iterations: int = 7,
+        iterations: int = _N_BISECT,
     ) -> np.ndarray:
         """
         Solve power balance equation under arbitrary headwind and crosswind conditions:
         f(v) = [ 1/2 * rho * CdA * v_app(v) * (v + v_w*cos(beta)) + m*g*(Crr + s) ] * v - P * eta = 0
+        Uses vectorized bracket-and-bisect to guarantee finding the stable physical root.
         """
         P = np.asarray(P, dtype=np.float64)
         s = np.asarray(s, dtype=np.float64)
@@ -320,34 +448,25 @@ class PhysicsSolver:
         else:
             rho = np.asarray(rho, dtype=np.float64)
 
-        # Relative wind angle beta
         beta = wind_dir_rad - bearing_rad
         w_par = wind_speed * np.cos(beta)   # positive = headwind
         w_perp = wind_speed * np.sin(beta)  # crosswind component
 
         c_mech = m * g * (Crr + s)
         p_in = np.maximum(P * eta, 0.0)
+        n = len(P)
 
-        # Initial estimate (8.0 m/s ~ 29 km/h)
-        v = np.full_like(P, 8.0)
+        def f_broadcast(v_scan: np.ndarray) -> np.ndarray:
+            v_head = v_scan[:, None] + w_par[None, :]
+            v_app = np.maximum(np.sqrt(v_head**2 + w_perp[None, :] ** 2), 1e-3)
+            f_aero = 0.5 * rho[None, :] * CdA * v_app * v_head
+            return (f_aero + c_mech[None, :]) * v_scan[:, None] - p_in[None, :]
 
-        for _ in range(iterations):
+        def f_pointwise(v: np.ndarray) -> np.ndarray:
             v_head = v + w_par
-            v_app = np.sqrt(v_head**2 + w_perp**2)
-            v_app = np.maximum(v_app, 1e-3)
-
-            # Aerodynamic drag force opposing forward motion
+            v_app = np.maximum(np.sqrt(v_head**2 + w_perp**2), 1e-3)
             f_aero = 0.5 * rho * CdA * v_app * v_head
-            # Force balance: F_aero + F_mech - P_in / v = 0
-            f_val = f_aero + c_mech - (p_in / v)
+            return (f_aero + c_mech) * v - p_in
 
-            # Derivative dF / dv (unconditionally strictly positive for all v > 0)
-            d_vapp_dv = v_head / v_app
-            d_faero_dv = 0.5 * rho * CdA * (d_vapp_dv * v_head + v_app)
-            df_dv = d_faero_dv + (p_in / (v**2))
-
-            df_dv = np.where(np.abs(df_dv) < 1e-5, 1e-5, df_dv)
-            v -= f_val / df_dv
-            v = np.maximum(v, 0.1)
-
-        return v
+        v = _largest_root_bisection(f_broadcast, f_pointwise, n, V_SAFETY_CEILING_MPS, V_FLOOR_MPS)
+        return np.maximum(v, 0.1)

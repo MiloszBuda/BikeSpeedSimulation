@@ -126,3 +126,123 @@ def test_smooth_power_response_asymmetric_lag():
     assert p_eff[4] > 400.0
     assert p_eff[5] < p_eff[4]
 
+
+def test_simulate_original_pacing_identical_conditions_zero_delta():
+    """Verify that simulating with identical wind conditions produces exactly 0.0 delta from baseline."""
+    n = 100
+    v_base = np.linspace(10.0, 5.0, n)
+    bearing = np.full(n, 45.0)
+    wind_speed = np.full(n, 4.0)
+    wind_dir = np.full(n, 120.0)
+    rho = np.full(n, 1.225)
+
+    v_sim = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=wind_speed,
+        base_wind_dir_deg=wind_dir,
+        sim_wind_speed=wind_speed,
+        sim_wind_dir_deg=wind_dir,
+        rho=rho,
+        mass=78.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    np.testing.assert_allclose(v_sim, v_base, atol=1e-5)
+
+
+def test_simulate_original_pacing_tailwind_sprint_slows_in_calm_air():
+    """Verify that a 43 km/h sprint with tailwind slows down slightly when simulated in calm air."""
+    n = 100
+    v_base = np.full(n, 43.0 / 3.6)
+    bearing = np.zeros(n)
+    # Baseline: 4 m/s tailwind (from South, heading North)
+    base_wind_speed = np.full(n, 4.0)
+    base_wind_dir = np.full(n, 180.0)
+    # Scenario: calm air (zero wind)
+    sim_wind_speed = np.zeros(n)
+    sim_wind_dir = np.zeros(n)
+    rho = np.full(n, 1.225)
+
+    v_sim = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind_speed,
+        base_wind_dir_deg=base_wind_dir,
+        sim_wind_speed=sim_wind_speed,
+        sim_wind_dir_deg=sim_wind_dir,
+        rho=rho,
+        mass=85.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    sim_kmh = v_sim * 3.6
+    # Simulated speed must be slightly lower than 43 km/h, NOT exploding to 60-80 km/h
+    assert np.all(sim_kmh <= 43.0 + 1e-4)
+    assert 40.0 < sim_kmh[-1] < 42.5
+
+
+def test_simulate_original_pacing_headwind_speeds_up_in_calm_air():
+    """Verify that a 35 km/h ride into 4 m/s headwind accelerates smoothly in calm air."""
+    n = 100
+    v_base = np.full(n, 35.0 / 3.6)
+    bearing = np.zeros(n)
+    # Baseline: 4 m/s headwind (from North, heading North)
+    base_wind_speed = np.full(n, 4.0)
+    base_wind_dir = np.zeros(n)
+    # Scenario: calm air (zero wind)
+    sim_wind_speed = np.zeros(n)
+    sim_wind_dir = np.zeros(n)
+    rho = np.full(n, 1.225)
+
+    v_sim = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind_speed,
+        base_wind_dir_deg=base_wind_dir,
+        sim_wind_speed=sim_wind_speed,
+        sim_wind_dir_deg=sim_wind_dir,
+        rho=rho,
+        mass=85.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    sim_kmh = v_sim * 3.6
+    # Simulated speed should smoothly accelerate above 35 km/h
+    assert np.all(sim_kmh >= 35.0 - 1e-4)
+    assert 37.0 < sim_kmh[-1] < 40.0
+
+
+def test_simulate_original_pacing_braking_descent_stays_controlled():
+    """Verify that a 22 km/h braking descent remains at ~22 km/h in calm air, with no runaway acceleration."""
+    n = 100
+    v_base = np.full(n, 22.0 / 3.6)
+    bearing = np.zeros(n)
+    # Mild baseline wind
+    base_wind_speed = np.full(n, 2.0)
+    base_wind_dir = np.zeros(n)
+    sim_wind_speed = np.zeros(n)
+    sim_wind_dir = np.zeros(n)
+    rho = np.full(n, 1.225)
+
+    v_sim = PhysicsSolver.simulate_original_pacing(
+        baseline_speed=v_base,
+        bearing_deg=bearing,
+        base_wind_speed=base_wind_speed,
+        base_wind_dir_deg=base_wind_dir,
+        sim_wind_speed=sim_wind_speed,
+        sim_wind_dir_deg=sim_wind_dir,
+        rho=rho,
+        mass=85.0,
+        cda=0.32,
+        dx=5.0,
+    )
+
+    sim_kmh = v_sim * 3.6
+    # Speeds must stay tightly controlled within ~1 km/h of baseline, NOT blow up to 50-60 km/h!
+    assert np.all(sim_kmh < 25.0)
+    assert np.all(sim_kmh > 20.0)
+

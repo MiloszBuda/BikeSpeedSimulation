@@ -188,8 +188,64 @@ class SimulationEngine:
             total_sim_time = total_base_time
             time_delta_s = 0.0
             eq_power = float(np.mean([p.power_w for p in clean_points])) if request.calculate_equivalent_power else None
+        elif not request.reverse_route and request.pacing_mode == PacingMode.ORIGINAL:
+            # 2. Original recorded ride What-If: aerodynamic perturbation model.
+            # The athlete's recorded trajectory already embodies their power output,
+            # grade, braking, cornering, and physical cadence limits.
+            # Only the aerodynamic resistance delta modifies the baseline trajectory.
+            v_sim = PhysicsSolver.simulate_original_pacing(
+                baseline_speed=v_base_clean,
+                bearing_deg=x_bearing,
+                base_wind_speed=x_wind_speed,
+                base_wind_dir_deg=x_wind_dir,
+                sim_wind_speed=sim_wind_speed,
+                sim_wind_dir_deg=sim_wind_dir,
+                rho=x_rho,
+                mass=request.mass_kg,
+                cda=request.cda,
+                dx=dx,
+                max_deviation_kmh=8.0,
+                max_accel_mps2=0.6,
+                deviation_response_time_s=4.0,
+            )
+
+            v_sim_clean = np.maximum(v_sim, 0.5)
+            v_sim_seg = 0.5 * (v_sim_clean[:-1] + v_sim_clean[1:])
+            dt_sim = dx / np.maximum(v_sim_seg, 0.5)
+            t_sim_cum = np.concatenate(([0.0], np.cumsum(dt_sim)))
+            delta_t_cum = t_base_cum - t_sim_cum
+            total_sim_time = float(t_sim_cum[-1])
+            time_delta_s = total_base_time - total_sim_time
+
+            eq_power = None
+            if request.calculate_equivalent_power:
+                # Closed-form aero work delta calculation:
+                # Delta W_aero = sum( (F_aero_sim - F_aero_base) * dx )
+                # Delta P = Delta W_aero / (eta * T_base)
+                # P_eq = P_base + Delta P
+                rad_b = np.radians(x_bearing)
+                b_beta = np.radians(x_wind_dir) - rad_b
+                s_beta = np.radians(sim_wind_dir) - rad_b
+                b_w_par = x_wind_speed * np.cos(b_beta)
+                b_w_perp = x_wind_speed * np.sin(b_beta)
+                s_w_par = sim_wind_speed * np.cos(s_beta)
+                s_w_perp = sim_wind_speed * np.sin(s_beta)
+
+                b_head = v_base_clean + b_w_par
+                b_app = np.sqrt(b_head**2 + b_w_perp**2)
+                f_aero_base_arr = 0.5 * x_rho * request.cda * b_app * b_head
+
+                s_head = v_base_clean + s_w_par
+                s_app = np.sqrt(s_head**2 + s_w_perp**2)
+                f_aero_sim_arr = 0.5 * x_rho * request.cda * s_app * s_head
+
+                delta_f_arr = f_aero_sim_arr - f_aero_base_arr
+                delta_w_aero = float(np.sum(delta_f_arr * dx))
+                delta_p = delta_w_aero / (request.drivetrain_efficiency * max(1.0, total_base_time))
+                p_base_mean = float(np.mean([p.power_w for p in clean_points]))
+                eq_power = max(0.0, p_base_mean + delta_p)
         else:
-            # 2. What-If scenario: continuous distance-domain simulation
+            # 3. Synthetic pacing or reverse route: continuous distance-domain physical simulation
             v_initial = float(v_base_clean[0])
             v_sim = PhysicsSolver.simulate_speed_arbitrary_wind(
                 P=x_power_effective,

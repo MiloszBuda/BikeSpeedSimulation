@@ -85,8 +85,8 @@ class ElevationService:
         # Protect against stationary points / division by zero
         dx = np.where(np.abs(dx) < 0.1, 0.1, dx)
         slope = dh / dx
-
-        # Clip to realistic road cycling slope (-35% to +35%)
+        
+        # Limit extreme slope outliers to a physically plausible road range.
         return np.clip(slope, -max_slope, max_slope)
 
     @staticmethod

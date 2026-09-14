@@ -14,6 +14,12 @@ from app.schemas.fit import WeatherPoint, WeatherSummary
 
 logger = logging.getLogger(__name__)
 
+# MET Norway's Locationforecast API has no historical archive - it only ever
+# returns current/upcoming conditions. Only worth trying as a last-resort
+# fallback when the ride is within this many days of "now"; older rides skip
+# it entirely and go straight to the ISA standard-atmosphere fallback.
+MET_NORWAY_MAX_RIDE_AGE_DAYS = 1
+
 # Global in-memory cache for Open-Meteo responses keyed by (lat, lon, start_date, end_date)
 # Spatial coordinates rounded to 2 decimal places (~1.1 km resolution)
 _WEATHER_CACHE: Dict[Tuple[float, float, str, str], Dict[str, Any]] = {}
@@ -155,11 +161,22 @@ class WeatherService:
         date_str: str,
         last_date_str: Optional[str] = None,
         client: Optional[httpx.AsyncClient] = None,
+        elevation_m: float = 0.0,
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch weather observations from Bright Sky (DWD/SYNOP open weather API).
         Returns an Open-Meteo compatible hourly dict if successful, or None.
+
+        Bright Sky's `pressure_msl` field is mean-sea-level pressure, not the
+        pressure at the route's actual elevation - using it directly as
+        "surface_pressure" overestimates air density (and therefore aero
+        drag / CdA fitting / wind sensitivity) by roughly 1.2% per 100 m of
+        elevation. `elevation_m` lets us apply the same ISA barometric
+        height correction already used by `generate_fallback_weather` so
+        this fallback path reports a physically consistent station
+        pressure.
         """
+        isa_factor = (1.0 - 2.25577e-5 * max(0.0, elevation_m)) ** 5.25588
         url = "https://api.brightsky.dev/weather"
         params: Dict[str, Any] = {
             "lat": round(lat, 4),
@@ -192,8 +209,9 @@ class WeatherService:
                             continue
                         times.append(t)
                         temps.append(float(entry.get("temperature") if entry.get("temperature") is not None else 20.0))
-                        p = entry.get("pressure_msl")
-                        pressures.append(float(p if p is not None else 1013.25))
+                        p_msl = entry.get("pressure_msl")
+                        p_msl = float(p_msl) if p_msl is not None else 1013.25
+                        pressures.append(p_msl * isa_factor)  # MSL -> station pressure
                         w_kmh = entry.get("wind_speed")
                         w_mps = (float(w_kmh) / 3.6) if w_kmh is not None else 2.0
                         wind_speeds.append(w_mps)
@@ -225,11 +243,27 @@ class WeatherService:
         lat: float,
         lon: float,
         client: Optional[httpx.AsyncClient] = None,
+        elevation_m: float = 0.0,
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch forecast time-series from MET Norway Weather API (api.met.no).
         Returns an Open-Meteo compatible hourly dict if successful, or None.
+
+        Note: MET Norway's Locationforecast API only ever returns current/
+        upcoming conditions - there is no historical archive endpoint. For a
+        ride analyzed well after the fact, this fallback will return
+        *today's* weather at that location, not the weather that was
+        actually present during the ride, with no signal in the response to
+        flag that mismatch. This is a pre-existing limitation of using MET
+        Norway as a historical fallback, not something fixed here; callers
+        analyzing older rides should treat MET-Norway-sourced weather with
+        that in mind.
+
+        `air_pressure_at_sea_level` is also mean-sea-level pressure, same
+        issue as Bright Sky's `pressure_msl` above - corrected the same way
+        via `elevation_m`.
         """
+        isa_factor = (1.0 - 2.25577e-5 * max(0.0, elevation_m)) ** 5.25588
         url = "https://api.met.no/weatherapi/locationforecast/2.0/compact"
         params = {
             "lat": round(lat, 4),
@@ -263,7 +297,8 @@ class WeatherService:
                             continue
                         times.append(t)
                         temps.append(float(instant.get("air_temperature", 20.0)))
-                        pressures.append(float(instant.get("air_pressure_at_sea_level", 1013.25)))
+                        p_msl = float(instant.get("air_pressure_at_sea_level", 1013.25))
+                        pressures.append(p_msl * isa_factor)  # MSL -> station pressure
                         wind_speeds.append(float(instant.get("wind_speed", 2.0)))
                         wind_dirs.append(float(instant.get("wind_from_direction", 0.0)))
                         humidities.append(float(instant.get("relative_humidity")) if "relative_humidity" in instant else None)
@@ -558,6 +593,7 @@ class WeatherService:
                     date_str=start_date,
                     last_date_str=end_date,
                     client=client,
+                    elevation_m=avg_elevation_m,
                 )
                 if bright_data is not None:
                     pts, summary = self.interpolate_to_timestamps(
@@ -574,27 +610,53 @@ class WeatherService:
                 logger.warning(f"Bright Sky fallback failed ({e}); switching to MET Norway.")
                 fail_reasons.append(f"Bright Sky: {e}")
 
-            # 3. Tertiary: MET Norway (Norwegian Met Institute)
+            # 3. Tertiary / true last resort: MET Norway (Norwegian Met
+            # Institute). This is a forecast-only API with no historical
+            # archive - it always returns *current* conditions regardless of
+            # what dates were requested. That makes it actively misleading
+            # for a genuinely historical ride (it would silently attach
+            # today's weather to a ride from weeks ago), so it's only worth
+            # trying at all when the ride is recent enough that "current
+            # conditions" is a reasonable stand-in for "conditions during
+            # the ride". For anything older, skip straight to the honestly-
+            # labeled ISA standard-atmosphere fallback below instead.
             try:
-                met_data = await self.fetch_met_norway(
-                    lat=lat,
-                    lon=lon,
-                    client=client,
-                )
-                if met_data is not None:
-                    pts, summary = self.interpolate_to_timestamps(
-                        met_data,
-                        target_timestamps,
-                        weather_provider="MET Norway",
+                end_d = datetime.fromisoformat(end_date).date()
+                ride_age_days = (datetime.now(timezone.utc).date() - end_d).days
+            except Exception:
+                ride_age_days = 999  # unparseable date: don't trust MET Norway with it
+
+            if ride_age_days <= MET_NORWAY_MAX_RIDE_AGE_DAYS:
+                try:
+                    met_data = await self.fetch_met_norway(
+                        lat=lat,
+                        lon=lon,
+                        client=client,
+                        elevation_m=avg_elevation_m,
                     )
-                    _WEATHER_CACHE[cache_key] = met_data
-                    logger.info("Successfully retrieved and interpolated weather from MET Norway.")
-                    return pts, summary
-                else:
-                    fail_reasons.append("MET Norway: no forecast data returned")
-            except Exception as e:
-                logger.warning(f"MET Norway fallback failed ({e}); engaging ISA model.")
-                fail_reasons.append(f"MET Norway: {e}")
+                    if met_data is not None:
+                        pts, summary = self.interpolate_to_timestamps(
+                            met_data,
+                            target_timestamps,
+                            weather_provider="MET Norway",
+                        )
+                        _WEATHER_CACHE[cache_key] = met_data
+                        logger.info("Successfully retrieved and interpolated weather from MET Norway.")
+                        return pts, summary
+                    else:
+                        fail_reasons.append("MET Norway: no forecast data returned")
+                except Exception as e:
+                    logger.warning(f"MET Norway fallback failed ({e}); engaging ISA model.")
+                    fail_reasons.append(f"MET Norway: {e}")
+            else:
+                logger.info(
+                    f"Skipping MET Norway fallback: ride ended {ride_age_days} day(s) ago, "
+                    f"older than its forecast-only horizon ({MET_NORWAY_MAX_RIDE_AGE_DAYS}d); "
+                    "its current conditions would not represent the ride."
+                )
+                fail_reasons.append(
+                    f"MET Norway: skipped, ride is {ride_age_days}d old (forecast-only source)"
+                )
 
         finally:
             if should_close:

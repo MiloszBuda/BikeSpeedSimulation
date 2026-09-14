@@ -206,6 +206,7 @@ class SimulationEngine:
                 crr=request.crr,
                 slope=x_slope,
                 dx=dx,
+                f_brake_base=f_brake_base,
                 max_deviation_kmh=16.0,
                 max_accel_mps2=0.9,
                 deviation_response_time_s=2.0,
@@ -219,33 +220,39 @@ class SimulationEngine:
             total_sim_time = float(t_sim_cum[-1])
             time_delta_s = total_base_time - total_sim_time
 
+            # Equivalent Power Calculation - reuses the exact same
+            # bisection-over-the-Heun-engine method as every other pacing
+            # mode below, instead of the old closed-form aero-work-delta
+            # shortcut. That shortcut evaluated the aero force difference at
+            # v_base_clean and divided by total_base_time regardless of how
+            # v_sim was actually computed here (bisection equilibrium +
+            # bounded dynamic lag + the max_deviation_kmh cap), so it could
+            # silently disagree with what the speed trace above shows -
+            # e.g. it doesn't know the deviation was capped, so it can
+            # report an equivalent power implying a bigger effect than what
+            # v_sim actually reflects. Solving it the same way for every
+            # pacing mode keeps `equivalent_power_w` directly comparable and
+            # consistent with the reported speed/time in every scenario.
             eq_power = None
             if request.calculate_equivalent_power:
-                # Closed-form aero work delta calculation:
-                # Delta W_aero = sum( (F_aero_sim - F_aero_base) * dx )
-                # Delta P = Delta W_aero / (eta * T_base)
-                # P_eq = P_base + Delta P
-                rad_b = np.radians(x_bearing)
-                b_beta = np.radians(x_wind_dir) - rad_b
-                s_beta = np.radians(sim_wind_dir) - rad_b
-                b_w_par = x_wind_speed * np.cos(b_beta)
-                b_w_perp = x_wind_speed * np.sin(b_beta)
-                s_w_par = sim_wind_speed * np.cos(s_beta)
-                s_w_perp = sim_wind_speed * np.sin(s_beta)
-
-                b_head = v_base_clean + b_w_par
-                b_app = np.sqrt(b_head**2 + b_w_perp**2)
-                f_aero_base_arr = 0.5 * x_rho * request.cda * b_app * b_head
-
-                s_head = v_base_clean + s_w_par
-                s_app = np.sqrt(s_head**2 + s_w_perp**2)
-                f_aero_sim_arr = 0.5 * x_rho * request.cda * s_app * s_head
-
-                delta_f_arr = f_aero_sim_arr - f_aero_base_arr
-                delta_w_aero = float(np.sum(delta_f_arr * dx))
-                delta_p = delta_w_aero / (request.drivetrain_efficiency * max(1.0, total_base_time))
-                p_base_mean = float(np.mean([p.power_w for p in clean_points]))
-                eq_power = max(0.0, p_base_mean + delta_p)
+                eq_power = SimulationEngine._solve_equivalent_power(
+                    target_time_s=total_base_time,
+                    base_power=x_power_effective,
+                    s=x_slope,
+                    bearing_deg=x_bearing,
+                    wind_speed=sim_wind_speed,
+                    wind_dir_deg=sim_wind_dir,
+                    mass_kg=request.mass_kg,
+                    cda=request.cda,
+                    crr=request.crr,
+                    rho=x_rho,
+                    eta=request.drivetrain_efficiency,
+                    dx=dx,
+                    v_initial=float(v_base_clean[0]),
+                    f_brake_base=f_brake_base,
+                    v_base=v_base_clean,
+                    reverse_route=False,
+                )
         else:
             # 3. Synthetic pacing or reverse route: continuous distance-domain physical simulation
             v_initial = float(v_base_clean[0])

@@ -58,4 +58,4 @@ def test_calculate_slope_from_distance():
     steep_elev = np.array([0.0, 100.0])
     steep_dist = np.array([0.0, 10.0])  # 1000% slope
     clipped_slope = ElevationService.calculate_slope_from_distance(steep_elev, steep_dist)
-    assert np.max(clipped_slope) <= 0.35
+    assert np.max(clipped_slope) <= 0.25

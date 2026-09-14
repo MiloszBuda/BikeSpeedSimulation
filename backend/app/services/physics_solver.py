@@ -107,8 +107,7 @@ class PhysicsSolver:
         """
         Calculate instantaneous net force acting on the bicycle along the road.
         Positive force accelerates the bicycle forward; negative force decelerates it.
-        Includes standing sprint aerodynamics, cadence efficiency limits, acceleration capping,
-        and recovered baseline descent braking.
+        Empirical sprint and high-speed cycling corrections.
         """
         speed = max(speed, 0.5)
 
@@ -188,6 +187,16 @@ class PhysicsSolver:
         (Heun's method) in v^2 kinetic energy space: d(v^2)/dx = 2/m * F_net(v).
         Guarantees smooth, continuous physics and eliminates independent point artifacts.
         Integrates recovered baseline descent braking force to prevent uncontrolled 0W freefall.
+
+        Note: `v_base` is no longer read by this function. It used to anchor a
+        flat descent-speed envelope that capped simulated speed to within a
+        few km/h of the recorded baseline on any descent, regardless of
+        pacing mode or how large the tested wind/CdA change was - which made
+        wind sensitivity look artificially damped on descents. Coasting/
+        braking realism is now handled entirely through `f_brake_base`
+        (reconstructed per point from the real baseline dynamics) and the
+        speed-based braking/acceleration limits in `_net_force`. The
+        parameter is kept so existing call sites don't need to change.
         """
         P = np.asarray(P, dtype=np.float64)
         s = np.asarray(s, dtype=np.float64)
@@ -286,17 +295,21 @@ class PhysicsSolver:
                 v2 = v2 + (2.0 * h / m) * force_avg
                 v2 = max(0.25, min(max_speed_mps**2, v2))
 
-            # Power-dependent descent speed envelope:
-            # On descents (s < -0.015), if cyclist was coasting/braking in baseline,
-            # don't allow simulated speed to drift arbitrarily far from baseline without pedaling power.
-            if v_base is not None and not reverse_route and s[i] < -0.015:
-                p_val = float(P[i])
-                margin_mps = (2.5 + 6.0 * min(1.0, max(0.0, p_val) / 250.0)) / 3.6
-                v_descent_max = float(v_base[i]) + margin_mps
-                v_calc = math.sqrt(v2)
-                if v_calc > v_descent_max:
-                    v2 = max(0.25, v_descent_max**2)
-
+            # NOTE: this used to also apply a flat "descent speed envelope"
+            # here (clamping to within ~2.5-8.5 km/h of the recorded
+            # baseline speed whenever slope < -1.5%, regardless of pacing
+            # mode or how large the tested wind/CdA change was). That
+            # envelope was redundant with `f_brake_base` - which already
+            # reconstructs, per point, how much braking force the rider
+            # actually applied on the *real* recorded descent - and far
+            # blunter: it capped wind sensitivity on every descent to a few
+            # km/h no matter what (verified directly: removing a 6 m/s
+            # headwind on a steady -8% grade should raise speed by ~20
+            # km/h; the envelope let through only ~5 km/h of that). Genuine
+            # coasting/braking realism is preserved through `f_brake_base`
+            # and the `_net_force` speed-based braking/acceleration caps
+            # above, which scale with the actual reconstructed dynamics
+            # instead of a fixed formula.
             speed[i] = math.sqrt(v2)
 
         return speed
@@ -316,6 +329,7 @@ class PhysicsSolver:
         slope: np.ndarray = None,
         crr: float = settings.DEFAULT_CRR,
         g: float = settings.GRAVITY,
+        f_brake_base: np.ndarray = None,
         max_deviation_kmh: float = 16.0,
         max_accel_mps2: float = 0.9,
         max_decel_mps2: float = 1.8,
@@ -337,6 +351,34 @@ class PhysicsSolver:
         - Smooth physical transition: short power spikes and sprints cannot jump instantaneously.
         - Controlled descents: zero-watt coasting/braking speeds remain anchored without runaway.
         - Perfect baseline identity: identical wind conditions produce exactly 0.00 km/h delta.
+
+        `f_res` uses the full signed slope term mass*g*(crr+s) - previously it
+        was mass*g*(crr+max(0, s)), which silently dropped gravity's forward
+        assist on every descent when back-solving the athlete's required
+        power. That made the recovered value too small on descents and
+        biased v_target low (verified directly: on a steady -8% grade, this
+        undershot the true wind-driven equilibrium by several km/h). Passing
+        `f_brake_base` (the same reconstructed braking force used by the
+        Heun engine) into both the back-solve and the forward-solve keeps
+        the two engines consistent: it's added on both sides of the balance
+        so a rider who was actually braking on the recorded descent keeps
+        applying the same held-back force under the new conditions, rather
+        than that braking silently vanishing once gravity is accounted for.
+
+        `max_deviation_kmh` is a deliberate *design limit* on how far the
+        simulated speed may drift from the recorded FIT trajectory - not
+        merely a numerical safety valve. Real wind can exceed 50 km/h, so a
+        sufficiently large wind change can legitimately imply a much bigger
+        physical speed delta than this; the cap intentionally holds the
+        result closer to what was actually ridden. To keep that a clean,
+        single decision rather than something baked into the solver too,
+        the equilibrium below is solved over the *full* physical speed
+        range (v_floor to the global safety ceiling), not a range
+        pre-narrowed to roughly +/-max_deviation - so `v_target` always
+        reflects the true physics-implied equilibrium, and the deviation
+        cap is applied exactly once, afterwards, to that true value. This
+        also makes the true-vs-capped gap directly inspectable if needed
+        (target_dev before vs. after the clamp below).
         """
         baseline_speed = np.asarray(baseline_speed, dtype=np.float64)
         bearing_deg = np.asarray(bearing_deg, dtype=np.float64)
@@ -356,6 +398,11 @@ class PhysicsSolver:
             slope_arr = np.zeros(n, dtype=np.float64)
         else:
             slope_arr = np.asarray(slope, dtype=np.float64)
+
+        if f_brake_base is None:
+            brake_arr = np.zeros(n, dtype=np.float64)
+        else:
+            brake_arr = np.asarray(f_brake_base, dtype=np.float64)
 
         bearing_rad = np.radians(bearing_deg)
         base_beta = np.radians(base_wind_dir_deg) - bearing_rad
@@ -384,30 +431,44 @@ class PhysicsSolver:
             else:
                 rho_i = float(rho[i])
                 s_i = float(slope_arr[i])
-                f_res = mass * g * (crr + max(0.0, s_i))
+                f_res = mass * g * (crr + s_i)
+                brake_i = max(0.0, float(brake_arr[i]))
 
                 # 1. Baseline aerodynamic drag at recorded baseline speed
                 base_head = v_base + base_w_parallel[i]
                 base_app = math.sqrt(base_head * base_head + base_w_perpendicular[i] * base_w_perpendicular[i])
                 f_aero_base = 0.5 * rho_i * cda * base_app * base_head
 
-                # Baseline effective power absorbed by aero and resistance
-                p_eff = (f_aero_base + f_res) * v_base
-                if p_eff <= 0.05:
+                # Baseline required power: the propulsive force needed to
+                # explain the recorded baseline speed given aero, rolling
+                # resistance, signed gravity load, and any recovered braking
+                # force - NOT necessarily the rider's actual power-meter
+                # reading (e.g. it implicitly absorbs drafting, or a braking
+                # rider's "required" pedal power is lower than what the
+                # equation alone would suggest since brake_i covers that).
+                p_baseline_required = (f_aero_base + f_res + brake_i) * v_base
+                if p_baseline_required <= 0.05:
                     v_target = v_base
                 else:
-                    # 2. Solve physical equilibrium speed v_target under simulated wind:
-                    # [F_aero_sim(v) + f_res] * v = p_eff
+                    # 2. Solve the TRUE physical equilibrium speed under simulated
+                    # wind: [F_aero_sim(v) + f_res + brake] * v = p_baseline_required.
+                    # Search the full physical range, not a range pre-narrowed to
+                    # roughly +/-max_deviation around v_base - narrowing the
+                    # bracket would mean the solver never even sees the real
+                    # equilibrium when it lies beyond the deviation cap, making
+                    # it impossible to tell "physics wants 67 km/h but we capped
+                    # it at 59" from "physics only ever wanted 59". The deviation
+                    # cap is applied once, below, after v_target is known.
                     sw_par = float(sim_w_parallel[i])
                     sw_perp = float(sim_w_perpendicular[i])
-                    lo = max(0.5, v_base - max_deviation - 1.0)
-                    hi = v_base + max_deviation + 1.0
-                    for _ in range(22):
+                    lo = 0.5
+                    hi = V_SAFETY_CEILING_MPS
+                    for _ in range(28):
                         mid = 0.5 * (lo + hi)
                         s_head = mid + sw_par
                         s_app = math.sqrt(s_head * s_head + sw_perp * sw_perp)
                         f_sim = 0.5 * rho_i * cda * s_app * s_head
-                        val = (f_sim + f_res) * mid - p_eff
+                        val = (f_sim + f_res + brake_i) * mid - p_baseline_required
                         if val <= 0.0:
                             lo = mid
                         else:

@@ -87,9 +87,17 @@ export interface Translations {
     advancedTooltipTitle: string;
     advancedTooltipContent: string;
     massTitle: string;
+    massTooltipTitle: string;
+    massTooltipContent: string;
     cdaTitle: string;
+    cdaTooltipTitle: string;
+    cdaTooltipContent: string;
     crrTitle: string;
+    crrTooltipTitle: string;
+    crrTooltipContent: string;
     drivetrainLossTitle: string;
+    etaTooltipTitle: string;
+    etaTooltipContent: string;
     resetDefaults: string;
   };
   compass: {
@@ -241,10 +249,18 @@ export const translations: Record<Language, Translations> = {
       advancedSubtitle: 'Masa, aerodynamika CdA, toczenie Crr i sprawność napędu',
       advancedTooltipTitle: 'Parametry fizyczne kolarza i sprzętu',
       advancedTooltipContent: 'Pozwalają precyzyjnie dostroić model do Twojej wagi, pozycji na rowerze oraz opon. Wartości są automatycznie zapamiętywane w przeglądarce.',
-      massTitle: 'Masa całkowita (kolarz + rower + bidony):',
-      cdaTitle: 'Pole powierzchni aerodynamicznej CdA:',
-      crrTitle: 'Współczynnik oporu toczenia Crr:',
-      drivetrainLossTitle: 'Sprawność napędu (1 - straty):',
+      massTitle: 'Masa zestawu (kg)',
+      massTooltipTitle: 'Masa całkowita zestawu (kg)',
+      massTooltipContent: 'Łączna masa kolarza, roweru, bidonów, kasku, butów i wyposażenia. Wpływa bezpośrednio na siłę grawitacji na podjazdach oraz bezwładność kinetyczną.',
+      cdaTitle: 'CdA oporu (m²)',
+      cdaTooltipTitle: 'Współczynnik aerodynamiczny CdA (m²)',
+      cdaTooltipContent: 'Iloczyn współczynnika oporu Cd i powierzchni czołowej A.\n\nSugerowane wartości:\n• TT / czasówka / triathlon: 0.20–0.24 m²\n• Szosa (dolny chwyt / baranek): 0.28–0.32 m²\n• Szosa (chwyt za klamkomanetki): 0.33–0.38 m²\n• Gravel / szosa endurance: 0.36–0.42 m²\n• MTB / pozycja wyprostowana: 0.40–0.50 m²',
+      crrTitle: 'Opór toczenia Crr',
+      crrTooltipTitle: 'Współczynnik oporu toczenia Crr',
+      crrTooltipContent: 'Opór toczenia opon po nawierzchni asfaltowej.\n\nSugerowane wartości (dobry asfalt):\n• Nowoczesne opony szosowe tubeless (np. GP5000 S TR): 0.0030–0.0038\n• Wysokiej klasy opony z dętką TPU / lateks: 0.0038–0.0045\n• Standardowe opony z dętką butylową: 0.0045–0.0055\n• Opony gravelowe / all-road (38–45mm): 0.0060–0.0080\n• Opony MTB / zniszczony, szorstki asfalt: 0.0080–0.0120',
+      drivetrainLossTitle: 'Sprawność napędu η',
+      etaTooltipTitle: 'Sprawność napędu łańcuchowego η',
+      etaTooltipContent: 'Ułamek energii mechanicznej przekazywanej z korby na tylne koło (1 - straty tarcia).\n\nSugerowane wartości:\n• Czysty, wywoskowany łańcuch szosowy: 0.975–0.980 (97.5–98%)\n• Dobrze nasmarowany i wyczyszczony napęd: 0.965–0.975 (96.5–97.5%)\n• Typowy napęd treningowy / gravel: 0.950–0.965 (95–96.5%)\n• Zabrudzony lub zużyty napęd: 0.920–0.940 (92–94%)',
       resetDefaults: 'Przywróć domyślne parametry',
     },
     compass: {
@@ -394,10 +410,18 @@ export const translations: Record<Language, Translations> = {
       advancedSubtitle: 'Mass, CdA aerodynamics, Crr rolling resistance, and drivetrain efficiency',
       advancedTooltipTitle: 'Rider and Equipment Physics',
       advancedTooltipContent: 'Fine-tune the model to your body mass, riding position, and tires. Values are automatically saved in your browser.',
-      massTitle: 'Total mass (rider + bike + bottles):',
-      cdaTitle: 'Aerodynamic drag area CdA:',
-      crrTitle: 'Rolling resistance coefficient Crr:',
-      drivetrainLossTitle: 'Drivetrain efficiency (1 - loss):',
+      massTitle: 'Total mass (kg)',
+      massTooltipTitle: 'Total System Mass (kg)',
+      massTooltipContent: 'Combined mass of rider, bicycle, water bottles, helmet, shoes, and gear. Directly determines gravitational resistance on ascents and kinetic inertia.',
+      cdaTitle: 'Aero drag CdA (m²)',
+      cdaTooltipTitle: 'Aerodynamic Drag Area CdA (m²)',
+      cdaTooltipContent: 'Product of aerodynamic drag coefficient Cd and frontal area A.\n\nSuggested benchmarks:\n• TT / Triathlon: 0.20–0.24 m²\n• Road drops (aerodynamic): 0.28–0.32 m²\n• Road hoods (standard): 0.33–0.38 m²\n• Gravel / Endurance upright: 0.36–0.42 m²\n• MTB / Flat bar upright: 0.40–0.50 m²',
+      crrTitle: 'Rolling resistance Crr',
+      crrTooltipTitle: 'Rolling Resistance Coefficient Crr',
+      crrTooltipContent: 'Coefficient of rolling friction between tires and asphalt.\n\nSuggested benchmarks (smooth pavement):\n• Modern road tubeless (e.g. GP5000 S TR): 0.0030–0.0038\n• High-end clinchers with TPU / latex tubes: 0.0038–0.0045\n• Standard road tires with butyl tubes: 0.0045–0.0055\n• Gravel / all-road tires (38–45mm): 0.0060–0.0080\n• MTB tires / rough coarse pavement: 0.0080–0.0120',
+      drivetrainLossTitle: 'Drivetrain efficiency η',
+      etaTooltipTitle: 'Drivetrain Efficiency η',
+      etaTooltipContent: 'Fraction of mechanical pedaling power transferred to the rear wheel (1 - friction losses).\n\nSuggested benchmarks:\n• Clean, hot-melt waxed chain: 0.975–0.980 (97.5–98%)\n• Clean, properly oiled road drivetrain: 0.965–0.975 (96.5–97.5%)\n• Typical road / gravel training bike: 0.950–0.965 (95–96.5%)\n• Dirty or worn chain / cassette: 0.920–0.940 (92–94%)',
       resetDefaults: 'Reset to default parameters',
     },
     compass: {

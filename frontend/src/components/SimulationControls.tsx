@@ -361,6 +361,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.massTitle}</label>
+                <Tooltip
+                  title={t.massTooltipTitle}
+                  content={t.massTooltipContent}
+                  position="top"
+                />
               </div>
               <input
                 type="number"
@@ -375,6 +380,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.cdaTitle}</label>
+                <Tooltip
+                  title={t.cdaTooltipTitle}
+                  content={t.cdaTooltipContent}
+                  position="top"
+                />
               </div>
               <input
                 type="number"
@@ -389,6 +399,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.crrTitle}</label>
+                <Tooltip
+                  title={t.crrTooltipTitle}
+                  content={t.crrTooltipContent}
+                  position="top"
+                />
               </div>
               <input
                 type="number"
@@ -403,6 +418,11 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.drivetrainLossTitle}</label>
+                <Tooltip
+                  title={t.etaTooltipTitle}
+                  content={t.etaTooltipContent}
+                  position="top"
+                />
               </div>
               <input
                 type="number"

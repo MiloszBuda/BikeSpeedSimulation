@@ -50,18 +50,18 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* 1. Delta Czasu Card */}
-      <div className={`p-4 rounded-xl border relative shadow-sm transition-colors duration-200 ${
+      <div className={`p-4 rounded-none border-2 relative transition-all duration-150 shadow-brutal dark:shadow-brutal-dark ${
         simulationSummary
           ? isZeroDelta
-            ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
+            ? 'bg-amber-300 border-zinc-900 dark:border-zinc-100 text-zinc-950'
             : isFaster
-            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/60 text-emerald-950 dark:text-emerald-100'
-            : 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800/60 text-rose-950 dark:text-rose-100'
-          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100'
+            ? 'bg-lime-300 border-zinc-900 dark:border-zinc-100 text-zinc-950'
+            : 'bg-rose-300 border-zinc-900 dark:border-zinc-100 text-zinc-950'
+          : 'bg-white dark:bg-zinc-900 border-zinc-900 dark:border-zinc-100 text-zinc-950 dark:text-zinc-50'
       }`}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-black font-mono uppercase tracking-wider text-zinc-900">
               {t.timeGainLoss}
             </span>
             <Tooltip
@@ -71,29 +71,27 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
               position="bottom"
             />
           </div>
-          <Clock className={`w-4 h-4 ${isZeroDelta ? 'text-teal-600 dark:text-teal-400' : isFaster ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`} />
+          <Clock className="w-4 h-4 text-zinc-950" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className={`text-2xl font-black font-mono ${
-            isZeroDelta ? 'text-teal-600 dark:text-teal-300' : isFaster ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-          }`}>
+          <span className="text-2xl font-black font-mono text-zinc-950">
             {simulationSummary ? (isZeroDelta ? '0m 00s' : isFaster ? `-${deltaFormatted}` : `+${deltaFormatted}`) : '--'}
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-zinc-900 font-bold font-mono">
             {simulationSummary ? (isZeroDelta ? t.timeMatchBase : isFaster ? t.timeFaster : t.timeSlower) : ''}
           </span>
         </div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 flex justify-between border-t border-slate-200 dark:border-slate-800/60 pt-1.5 font-mono">
+        <div className="text-[11px] text-zinc-900 mt-2 flex justify-between border-t-2 border-zinc-900 pt-1.5 font-mono font-bold">
           <span>{t.baseTime}: {formatSeconds(baseTimeSec)}</span>
           <span>{t.simTime}: {formatSeconds(simTimeSec)}</span>
         </div>
       </div>
 
       {/* 2. Ekwiwalent Mocy Card */}
-      <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 relative shadow-sm transition-colors duration-200">
+      <div className="p-4 rounded-none border-2 border-zinc-900 dark:border-zinc-100 bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 relative shadow-brutal dark:shadow-brutal-dark transition-all duration-150">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-black font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
               {t.eqPower}
             </span>
             <Tooltip
@@ -103,26 +101,26 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
               position="bottom"
             />
           </div>
-          <Zap className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+          <Zap className="w-4 h-4 text-amber-500" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-black font-mono text-amber-600 dark:text-amber-300">
+          <span className="text-2xl font-black font-mono text-zinc-950 dark:text-zinc-50">
             {eqPowerW} W
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+          <span className="text-xs font-mono font-bold text-zinc-600 dark:text-zinc-400">
             ({powerDiff >= 0 ? '+' : ''}{powerDiff} W)
           </span>
         </div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 border-t border-slate-200 dark:border-slate-800/60 pt-1.5">
+        <div className="text-[11px] text-zinc-700 dark:text-zinc-300 mt-2 border-t-2 border-zinc-900 dark:border-zinc-100 pt-1.5 font-mono font-bold">
           {isZeroDelta ? t.eqPowerMatch : t.eqPowerRequired}
         </div>
       </div>
 
       {/* 3. Prędkość Symulowana vs Bazowa */}
-      <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 relative shadow-sm transition-colors duration-200">
+      <div className="p-4 rounded-none border-2 border-zinc-900 dark:border-zinc-100 bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 relative shadow-brutal dark:shadow-brutal-dark transition-all duration-150">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-black font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
               {t.avgSpeed}
             </span>
             <Tooltip
@@ -132,28 +130,28 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
               position="bottom"
             />
           </div>
-          <Gauge className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <Gauge className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-black font-mono text-teal-600 dark:text-teal-300">
+          <span className="text-2xl font-black font-mono text-zinc-950 dark:text-zinc-50">
             {simSpeedKmh.toFixed(1)}
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">km/h</span>
-          <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+          <span className="text-xs font-mono font-bold text-zinc-600 dark:text-zinc-400">km/h</span>
+          <span className="text-xs text-zinc-500 font-mono">
             ({t.baseSpeed}: {baseSpeedKmh.toFixed(1)})
           </span>
         </div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 flex justify-between border-t border-slate-200 dark:border-slate-800/60 pt-1.5 font-mono">
+        <div className="text-[11px] text-zinc-700 dark:text-zinc-300 mt-2 flex justify-between border-t-2 border-zinc-900 dark:border-zinc-100 pt-1.5 font-mono font-bold">
           <span>{t.distance}: {(fitSummary.total_distance_m / 1000).toFixed(2)} km</span>
           <span>{t.maxSpeed}: {fitSummary.max_speed_kmh.toFixed(1)} km/h</span>
         </div>
       </div>
 
       {/* 4. Model Fizyczny & Przewyższenie */}
-      <div className="p-4 rounded-xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 relative shadow-sm transition-colors duration-200">
+      <div className="p-4 rounded-none border-2 border-zinc-900 dark:border-zinc-100 bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 relative shadow-brutal dark:shadow-brutal-dark transition-all duration-150">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-black font-mono uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
               {t.modelElevation}
             </span>
             <Tooltip
@@ -163,17 +161,17 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({
               position="bottom"
             />
           </div>
-          <Mountain className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <Mountain className="w-4 h-4 text-lime-600 dark:text-lime-400" />
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-black font-mono text-indigo-600 dark:text-indigo-300">
+          <span className="text-2xl font-black font-mono text-zinc-950 dark:text-zinc-50">
             +{Math.round(fitSummary.total_elevation_gain_m)} m
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-zinc-500 font-mono">
             (-{Math.round(fitSummary.total_elevation_loss_m)} m)
           </span>
         </div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 flex justify-between border-t border-slate-200 dark:border-slate-800/60 pt-1.5 font-mono">
+        <div className="text-[11px] text-zinc-700 dark:text-zinc-300 mt-2 flex justify-between border-t-2 border-zinc-900 dark:border-zinc-100 pt-1.5 font-mono font-bold">
           <span>CdA: {cda.toFixed(3)} m²</span>
           <span>NP: {fitSummary.normalized_power_w ? `${Math.round(fitSummary.normalized_power_w)} W` : '--'}</span>
         </div>

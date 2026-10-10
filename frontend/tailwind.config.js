@@ -9,12 +9,26 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
+          50: '#fff7ed',
+          100: '#ffedd5',
+          500: '#fc4c02',
+          600: '#ea580c',
+          700: '#c2410c',
+        },
+        strava: {
+          DEFAULT: '#fc4c02',
+          dark: '#e34402',
+          light: '#ff6726',
+          carbon: '#111215',
+          surface: '#18191f',
+          panel: '#20222a',
+          border: '#2a2d3a',
+          yellow: '#facc15',
         }
+      },
+      boxShadow: {
+        'strava': '0 4px 15px -1px rgba(252, 76, 2, 0.35)',
+        'racing-card': '0 4px 20px -2px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(252, 76, 2, 0.15)',
       }
     },
   },

@@ -38,18 +38,19 @@ export const Header: React.FC<HeaderProps> = ({
   t,
 }) => {
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
+    <header className="border-b border-orange-500/25 bg-white/90 dark:bg-[#121316]/95 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl shadow-lg shadow-teal-500/20 text-white shrink-0">
-            <Bike className="w-6 h-6" />
+          <div className="p-2.5 bg-gradient-to-br from-[#fc4c02] to-[#d63f02] rounded-xl shadow-strava text-white shrink-0 transform -rotate-2 hover:rotate-0 transition-transform">
+            <Bike className="w-6 h-6 stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              AeroBike
+            <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 italic">
+              <span>AEROBIKE</span>
+              <span className="text-[10px] not-italic px-2 py-0.5 rounded bg-orange-500 text-white font-extrabold uppercase tracking-wider shadow-sm">PRO RACING</span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-orange-600 dark:text-orange-400/90 font-medium">
               {t.subtitle}
             </p>
           </div>

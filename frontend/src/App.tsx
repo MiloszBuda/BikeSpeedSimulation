@@ -534,102 +534,105 @@ export const App: React.FC = () => {
         t={t.header}
       />
 
-      {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
-        {/* Adblock / Client Blocked Notification Banner */}
-        {isBlockedByClient && (
-          <div className="bg-rose-50 dark:bg-rose-950/80 border-2 border-rose-300 dark:border-rose-500/80 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-rose-900 dark:text-rose-200 text-xs shadow-xl backdrop-blur-sm">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="block text-rose-950 dark:text-rose-100 font-semibold text-sm mb-1">
-                  {lang === 'pl' ? 'Wykryto blokadę rozszerzenia przeglądarki (net::ERR_BLOCKED_BY_CLIENT)' : 'Browser Extension Block Detected (net::ERR_BLOCKED_BY_CLIENT)'}
-                </strong>
-                <p className="text-rose-800 dark:text-rose-300 leading-relaxed">
-                  {lang === 'pl'
-                    ? 'Twoje rozszerzenie blokujące reklamy lub skrypty śledzące (np. uBlock Origin, AdBlock, AdGuard lub Brave Shields) zablokowało komunikację z serwerem obliczeniowym Render.'
-                    : 'Your adblock or privacy extension (e.g., uBlock Origin, AdBlock, AdGuard, or Brave Shields) blocked communication with the Render simulation backend.'}
-                </p>
-                <div className="mt-2 text-rose-900 dark:text-rose-200">
-                  👉 <b>{lang === 'pl' ? 'Rozwiązanie:' : 'Solution:'}</b> {lang === 'pl' ? 'Kliknij ikonę Adblocka na pasku i wyłącz blokowanie dla strony miloszbuda.github.io, a następnie kliknij przycisk obok.' : 'Click your Adblock icon in the toolbar, disable blocking for miloszbuda.github.io, and click retry.'}
+      {/* Main Command Center Workspace Container */}
+      <main className="flex-1 max-w-[1720px] w-full mx-auto px-4 sm:px-6 py-6 flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Persistent Control Sidebar */}
+        <aside className="w-full lg:w-[420px] xl:w-[460px] shrink-0 flex flex-col gap-6 lg:sticky lg:top-20">
+          {/* File Upload Zone */}
+          <FileUpload
+            onFileSelected={handleFileSelected}
+            isLoading={isProcessingFile}
+            fileName={fileName}
+            error={fileError}
+            t={t.upload}
+          />
+
+          {/* Simulation Controls (Wind Compass, Sliders, Pacing, Drivetrain) */}
+          <SimulationControls
+            config={config}
+            onChange={handleConfigChange}
+            onRunSimulation={handleRunSimulation}
+            onResetWeather={handleResetWeather}
+            onResetAdvancedDefaults={handleResetAdvancedDefaults}
+            isLoading={isSimulating}
+            baselineWindSpeedMps={processData.weather_summary.avg_wind_speed_cyclist_mps}
+            baselineWindDirDeg={processData.weather_summary.dominant_wind_dir_deg}
+            weatherProvider={processData.weather_summary.weather_provider}
+            isWeatherFallback={processData.weather_summary.is_fallback}
+            weatherFallbackReason={processData.weather_summary.fallback_reason}
+            calibrationBadge={calibrationBadge}
+            onResetCalibrationBadge={handleResetCalibrationBadge}
+            t={t.controls}
+            tCompass={t.compass}
+          />
+        </aside>
+
+        {/* Right Primary Telemetry & Visualizations Viewport */}
+        <section className="flex-1 min-w-0 w-full flex flex-col gap-6">
+          {/* Adblock / Client Blocked Notification Banner */}
+          {isBlockedByClient && (
+            <div className="bg-rose-50 dark:bg-rose-950/80 border-2 border-rose-300 dark:border-rose-500/80 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-rose-900 dark:text-rose-200 text-xs shadow-xl backdrop-blur-sm">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block text-rose-950 dark:text-rose-100 font-semibold text-sm mb-1">
+                    {lang === 'pl' ? 'Wykryto blokadę rozszerzenia przeglądarki (net::ERR_BLOCKED_BY_CLIENT)' : 'Browser Extension Block Detected (net::ERR_BLOCKED_BY_CLIENT)'}
+                  </strong>
+                  <p className="text-rose-800 dark:text-rose-300 leading-relaxed">
+                    {lang === 'pl'
+                      ? 'Twoje rozszerzenie blokujące reklamy lub skrypty śledzące (np. uBlock Origin, AdBlock, AdGuard lub Brave Shields) zablokowało komunikację z serwerem obliczeniowym Render.'
+                      : 'Your adblock or privacy extension (e.g., uBlock Origin, AdBlock, AdGuard, or Brave Shields) blocked communication with the Render simulation backend.'}
+                  </p>
+                  <div className="mt-2 text-rose-900 dark:text-rose-200">
+                    👉 <b>{lang === 'pl' ? 'Rozwiązanie:' : 'Solution:'}</b> {lang === 'pl' ? 'Kliknij ikonę Adblocka na pasku i wyłącz blokowanie dla strony miloszbuda.github.io, a następnie kliknij przycisk obok.' : 'Click your Adblock icon in the toolbar, disable blocking for miloszbuda.github.io, and click retry.'}
+                  </div>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={handleRetryBackend}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg shadow transition-all active:scale-95 shrink-0"
+              >
+                {lang === 'pl' ? 'Sprawdź ponownie' : 'Retry connection'}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleRetryBackend}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg shadow transition-all active:scale-95 shrink-0"
-            >
-              {lang === 'pl' ? 'Sprawdź ponownie' : 'Retry connection'}
-            </button>
-          </div>
-        )}
+          )}
 
-        {/* File Upload Zone */}
-        <FileUpload
-          onFileSelected={handleFileSelected}
-          isLoading={isProcessingFile}
-          fileName={fileName}
-          error={fileError}
-          t={t.upload}
-        />
-
-        {/* Telemetry Summary Cards */}
-        {processData && (
-          <SummaryCards
-            simulationSummary={simulationData?.summary ?? null}
-            fitSummary={processData.summary}
-            cda={config.cda}
-            t={t.summary}
-          />
-        )}
-
-        {/* Interactive Controls & Route Map Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Simulation Controls (Wind Compass, Sliders, Pacing, Reversal) */}
-          <div className="lg:col-span-6 xl:col-span-5">
-            <SimulationControls
-              config={config}
-              onChange={handleConfigChange}
-              onRunSimulation={handleRunSimulation}
-              onResetWeather={handleResetWeather}
-              onResetAdvancedDefaults={handleResetAdvancedDefaults}
-              isLoading={isSimulating}
-              baselineWindSpeedMps={processData.weather_summary.avg_wind_speed_cyclist_mps}
-              baselineWindDirDeg={processData.weather_summary.dominant_wind_dir_deg}
-              weatherProvider={processData.weather_summary.weather_provider}
-              isWeatherFallback={processData.weather_summary.is_fallback}
-              weatherFallbackReason={processData.weather_summary.fallback_reason}
-              calibrationBadge={calibrationBadge}
-              onResetCalibrationBadge={handleResetCalibrationBadge}
-              t={t.controls}
-              tCompass={t.compass}
+          {/* Telemetry Summary Cards */}
+          {processData && (
+            <SummaryCards
+              simulationSummary={simulationData?.summary ?? null}
+              fitSummary={processData.summary}
+              cda={config.cda}
+              t={t.summary}
             />
-          </div>
+          )}
 
           {/* Interactive Leaflet Route Map */}
-          <div className="lg:col-span-6 xl:col-span-7">
-            {simulationData && (
+          {simulationData && (
+            <div className="w-full">
               <RouteMap
                 spatialPoints={simulationData.spatial_points}
                 hoveredIndex={hoveredSpatialIndex}
                 theme={theme}
                 t={t.map}
               />
-            )}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* ECharts Telemetry Charts */}
-        {simulationData && (
-          <TelemetryCharts
-            spatialPoints={simulationData.spatial_points}
-            enrichedPoints={processData?.points}
-            onHoverIndex={setHoveredSpatialIndex}
-            theme={theme}
-            t={t.charts}
-          />
-        )}
+          {/* ECharts Telemetry Charts */}
+          {simulationData && (
+            <div className="w-full">
+              <TelemetryCharts
+                spatialPoints={simulationData.spatial_points}
+                enrichedPoints={processData?.points}
+                onHoverIndex={setHoveredSpatialIndex}
+                theme={theme}
+                t={t.charts}
+              />
+            </div>
+          )}
+        </section>
       </main>
 
       {/* Chung Analysis Modal */}

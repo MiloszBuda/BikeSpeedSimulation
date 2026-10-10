@@ -14,7 +14,7 @@ permissions:
 
 # Allow one concurrent deployment
 concurrency:
-  group: 'pages'
+  group: "pages"
   cancel-in-progress: false
 
 jobs:
@@ -40,8 +40,8 @@ jobs:
         working-directory: ./frontend
         env:
           VITE_API_URL: https://bikespeedsimulation.onrender.com
-          VITE_CARTO_API_KEY: ${{ vars.VITE_CARTO_API_KEY || vars.VITE_CARTO_AI_KEY || vars.CARTO_API_KEY || vars.CARTO_AI_KEY || vars.vite_carto_api_key || vars.vite_carto_ai_key || vars.carto_api_key || vars.carto_ai_key || secrets.VITE_CARTO_API_KEY || secrets.VITE_CARTO_AI_KEY || secrets.CARTO_API_KEY || secrets.CARTO_AI_KEY }}
-          VITE_CARTO_AI_KEY: ${{ vars.VITE_CARTO_AI_KEY || vars.vite_carto_ai_key || vars.VITE_CARTO_API_KEY }}
+          VITE_CARTO_API_KEY: ${{ vars.VITE_CARTO_API_KEY ||vars.CARTO_API_KEY || vars.vite_carto_api_key || vars.carto_api_key || secrets.VITE_CARTO_API_KEY || secrets.CARTO_API_KEY }}
+
         run: npm run build
 
       - name: Setup GitHub Pages
@@ -50,7 +50,7 @@ jobs:
       - name: Upload artifact to GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './frontend/dist'
+          path: "./frontend/dist"
 
       - name: Deploy to GitHub Pages
         id: deployment

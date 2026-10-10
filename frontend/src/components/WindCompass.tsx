@@ -104,10 +104,10 @@ export const WindCompass: React.FC<WindCompassProps> = ({
   return (
     <div className="flex flex-col items-center select-none w-full">
       {/* Row 1: Title and Tooltip */}
-      <div className="flex items-center justify-between w-full mb-1.5">
+      <div className="flex items-center justify-between w-full mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Compass className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+          <Compass className="w-4 h-4 text-zinc-950 dark:text-zinc-50 shrink-0 stroke-[2.5]" />
+          <span className="text-xs font-mono font-bold uppercase tracking-wide text-zinc-950 dark:text-zinc-50">
             {titleText}
           </span>
           <Tooltip
@@ -125,13 +125,13 @@ export const WindCompass: React.FC<WindCompassProps> = ({
         </div>
       </div>
 
-      {/* Row 2: Angle and Cardinal Direction */}
-      <div className="w-full flex items-center justify-between bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-2.5 py-1 mb-2 rounded font-mono text-xs shadow-sm">
-        <div className="flex items-center gap-1 text-teal-600 dark:text-teal-300 font-bold">
+      {/* Row 2: Angle and Cardinal Direction Banner */}
+      <div className="w-full flex items-center justify-between bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-100 px-3 py-1.5 mb-2.5 rounded-none font-mono text-xs shadow-brutal-sm dark:shadow-brutal-sm-dark">
+        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-black">
           <span>➔ {flowCardinal.label}</span>
           <span>({flowAngle}°)</span>
         </div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="text-[11px] text-zinc-600 dark:text-zinc-400 font-bold">
           {fromText}: {Math.round(angle)}° {sourceCardinal.label}
         </div>
       </div>
@@ -152,7 +152,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
             cx={center}
             cy={center}
             r={radius}
-            className="fill-slate-100 dark:fill-slate-900 stroke-slate-300 dark:stroke-slate-700 stroke-2"
+            className="fill-[#f4f4f0] dark:fill-[#121214] stroke-zinc-900 dark:stroke-zinc-100 stroke-2"
           />
 
           {/* Sub-ticks every 15 deg */}
@@ -174,7 +174,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                className={isMajor ? 'stroke-slate-400 dark:stroke-slate-500 stroke-2' : 'stroke-slate-300 dark:stroke-slate-700 stroke-1'}
+                className={isMajor ? 'stroke-zinc-900 dark:stroke-zinc-100 stroke-2' : 'stroke-zinc-400 dark:stroke-zinc-600 stroke-1'}
               />
             );
           })}
@@ -193,8 +193,10 @@ export const WindCompass: React.FC<WindCompassProps> = ({
                 x={x}
                 y={y}
                 textAnchor="middle"
-                className={`text-[10px] font-bold ${
-                  isNorth ? 'fill-rose-500 font-extrabold' : 'fill-slate-500 dark:fill-slate-400'
+                className={`font-mono ${
+                  isNorth
+                    ? 'fill-rose-600 font-black text-[11px]'
+                    : 'fill-zinc-900 dark:fill-zinc-100 font-bold text-[10px]'
                 }`}
               >
                 {c.label}
@@ -207,7 +209,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
             cx={center}
             cy={center}
             r={14}
-            className="fill-slate-200 dark:fill-slate-800 stroke-slate-300 dark:stroke-slate-600 stroke-1"
+            className="fill-white dark:fill-zinc-800 stroke-zinc-900 dark:stroke-zinc-100 stroke-2"
           />
 
           {/* Rotating Needle / Arrow - Rotated to flowAngle so arrowhead points where air flows */}
@@ -215,12 +217,12 @@ export const WindCompass: React.FC<WindCompassProps> = ({
             {/* Arrow Head: Points in the direction of wind flow */}
             <polygon
               points={`${center},${center - radius + 12} ${center - 7},${center - 6} ${center + 7},${center - 6}`}
-              className="fill-teal-500 dark:fill-teal-400 drop-shadow-md"
+              className="fill-amber-400 stroke-zinc-900 stroke-1"
             />
             {/* Tail counterweight: where wind is coming from */}
             <polygon
               points={`${center},${center + radius - 16} ${center - 4},${center + 6} ${center + 4},${center + 6}`}
-              className="fill-slate-400 dark:fill-slate-600"
+              className="fill-zinc-700 dark:fill-zinc-400 stroke-zinc-900 stroke-1"
             />
             {/* Shaft line */}
             <line
@@ -228,17 +230,17 @@ export const WindCompass: React.FC<WindCompassProps> = ({
               y1={center - radius + 14}
               x2={center}
               y2={center + radius - 18}
-              className="stroke-teal-500 dark:stroke-teal-400 stroke-2"
+              className="stroke-amber-400 stroke-[3]"
             />
             {/* Center dot */}
-            <circle cx={center} cy={center} r={4} className="fill-teal-400 dark:fill-teal-300" />
+            <circle cx={center} cy={center} r={4} className="fill-amber-400 stroke-zinc-900 stroke-1" />
           </g>
         </svg>
 
         {/* Floating tooltip indicating action */}
         {!disabled && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-[10px] bg-white/95 dark:bg-slate-900/90 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded shadow border border-slate-300 dark:border-slate-700 font-medium">
+            <span className="text-[10px] bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 px-2 py-0.5 rounded-none border-2 border-zinc-900 dark:border-zinc-100 font-mono font-bold shadow-brutal-sm">
               {dragText}
             </span>
           </div>
@@ -246,15 +248,15 @@ export const WindCompass: React.FC<WindCompassProps> = ({
       </div>
 
       {/* Quick Action Angle Buttons */}
-      <div className="grid grid-cols-3 gap-1.5 max-w-[240px] w-full mx-auto mt-3">
+      <div className="grid grid-cols-3 gap-1.5 max-w-[220px] w-full mx-auto mt-3">
         <button
           type="button"
           disabled={disabled}
           onClick={() => rotateBy(-45)}
-          className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-700 dark:text-slate-300 text-xs rounded-lg border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1 transition-colors active:scale-95 shadow-sm"
+          className="py-1.5 px-2 bg-white hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 disabled:opacity-40 text-zinc-900 dark:text-zinc-100 text-xs font-mono font-bold rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm dark:shadow-brutal-sm-dark flex items-center justify-center gap-1 transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
           title={t?.rotateMinus45 || 'Obróć o 45° w lewo'}
         >
-          <RotateCcw className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+          <RotateCcw className="w-3 h-3 stroke-[2.5]" />
           <span>-45°</span>
         </button>
 
@@ -262,10 +264,10 @@ export const WindCompass: React.FC<WindCompassProps> = ({
           type="button"
           disabled={disabled}
           onClick={() => rotateBy(180)}
-          className="py-1.5 px-2 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/70 dark:hover:bg-teal-900 border border-teal-300 dark:border-teal-600/50 text-teal-700 dark:text-teal-300 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors active:scale-95 shadow-sm"
+          className="py-1.5 px-2 bg-amber-400 hover:bg-amber-300 disabled:opacity-40 border-2 border-zinc-900 dark:border-zinc-100 text-zinc-950 text-xs font-mono font-black rounded-none shadow-brutal-sm dark:shadow-brutal-sm-dark flex items-center justify-center gap-1 transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
           title={t?.reverse180 || 'Odwróć wiatr o 180°'}
         >
-          <RefreshCw className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+          <RefreshCw className="w-3 h-3 stroke-[2.5]" />
           <span>180°</span>
         </button>
 
@@ -273,37 +275,40 @@ export const WindCompass: React.FC<WindCompassProps> = ({
           type="button"
           disabled={disabled}
           onClick={() => rotateBy(45)}
-          className="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-700 dark:text-slate-300 text-xs rounded-lg border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1 transition-colors active:scale-95 shadow-sm"
+          className="py-1.5 px-2 bg-white hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 disabled:opacity-40 text-zinc-900 dark:text-zinc-100 text-xs font-mono font-bold rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm dark:shadow-brutal-sm-dark flex items-center justify-center gap-1 transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
           title={t?.rotatePlus45 || 'Obróć o 45° w prawo'}
         >
           <span>+45°</span>
-          <RotateCw className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+          <RotateCw className="w-3 h-3 stroke-[2.5]" />
         </button>
       </div>
 
-      {/* Preset Cardinal Buttons */}
-      <div className="grid grid-cols-4 gap-1.5 max-w-[240px] w-full mx-auto mt-2">
+      {/* Preset Cardinal Buttons (Clean, tight 4-button grid) */}
+      <div className="grid grid-cols-4 gap-1.5 max-w-[220px] w-full mx-auto mt-2">
         {[
           { label: 'N', deg: 0, text: '0°' },
           { label: 'E', deg: 90, text: '90°' },
           { label: 'S', deg: 180, text: '180°' },
           { label: 'W', deg: 270, text: '270°' },
-        ].map((p) => (
-          <button
-            key={p.deg}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(p.deg)}
-            className={`py-1.5 px-1 text-xs rounded-lg border transition-all text-center flex items-center justify-center gap-1 ${
-              Math.abs(angle - p.deg) < 1
-                ? 'bg-teal-600 text-white border-teal-500 font-bold shadow-sm ring-1 ring-teal-400/30'
-                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 shadow-sm'
-            }`}
-          >
-            <span className="font-bold">{p.label}</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">({p.text})</span>
-          </button>
-        ))}
+        ].map((p) => {
+          const isSelected = Math.abs(angle - p.deg) < 1;
+          return (
+            <button
+              key={p.deg}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(p.deg)}
+              className={`py-1.5 px-1 text-xs font-mono rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm dark:shadow-brutal-sm-dark transition-all text-center flex items-center justify-center gap-0.5 hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
+                isSelected
+                  ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 font-black'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold'
+              }`}
+            >
+              <span>{p.label}</span>
+              <span className="text-[9px] opacity-75">({p.text})</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

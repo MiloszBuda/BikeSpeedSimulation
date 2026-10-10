@@ -2,29 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbars */
+/* Custom scrollbars - Neo Brutalist */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #f4f4f0;
+  border-left: 2px solid #18181b;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #121214;
+  border-left: 2px solid #f4f4f5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: #facc15;
+  border: 2px solid #18181b;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+.dark ::-webkit-scrollbar-thumb {
+  background: #facc15;
+  border: 2px solid #f4f4f5;
 }
 
-/* Fix Leaflet pane layering */
+/* Fix Leaflet pane layering - Sharp Neo-Brutalist */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  border-radius: 0.75rem;
+  border-radius: 0px !important;
   z-index: 10;
+  border: 2px solid #18181b;
+  box-shadow: 4px 4px 0px 0px #18181b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.dark .leaflet-container {
+  border: 2px solid #f4f4f5;
+  box-shadow: 4px 4px 0px 0px #f4f4f5;
+}
+
+/* Sharp Neo-Brutalist Leaflet popups */
+.leaflet-popup-content-wrapper {
+  border-radius: 0px !important;
+  border: 2px solid #18181b !important;
+  background: #ffffff !important;
+  color: #18181b !important;
+  box-shadow: 3px 3px 0px 0px #18181b !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+.dark .leaflet-popup-content-wrapper {
+  background: #1c1c1f !important;
+  color: #f4f4f5 !important;
+  border: 2px solid #f4f4f5 !important;
+  box-shadow: 3px 3px 0px 0px #f4f4f5 !important;
+}
+
+.dark .leaflet-popup-tip {
+  background: #1c1c1f !important;
 }

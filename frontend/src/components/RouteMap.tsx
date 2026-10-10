@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { MapPin } from 'lucide-react';
 import { SpatialPoint } from '../types/simulation';
 import { Translations } from '../i18n/translations';
 
@@ -76,9 +77,23 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     return segs;
   }, [spatialPoints]);
 
+  // Read optional CARTO API key or custom tile template from environment
+  const cartoApiKey = (import.meta.env.VITE_CARTO_API_KEY as string | undefined)?.trim();
+  const customTileUrl = (import.meta.env.VITE_CARTO_TILE_URL as string | undefined)?.trim();
+
+  const defaultTileUrl = theme === 'dark'
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+  const tileUrl = customTileUrl
+    ? customTileUrl
+    : cartoApiKey
+    ? `${defaultTileUrl}?api_key=${encodeURIComponent(cartoApiKey)}`
+    : defaultTileUrl;
+
   if (coordinates.length === 0 || !bounds) {
     return (
-      <div className="h-[380px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-slate-500 text-sm">
+      <div className="h-[380px] bg-white dark:bg-[#1c1c1f] border-2 border-zinc-900 dark:border-zinc-100 rounded-none shadow-brutal dark:shadow-brutal-dark flex items-center justify-center text-zinc-500 font-mono font-bold text-sm">
         {t.noGps}
       </div>
     );
@@ -90,31 +105,33 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     ? [spatialPoints[hoveredIndex].lat, spatialPoints[hoveredIndex].lon] as [number, number]
     : null;
 
-  const tileUrl = theme === 'dark'
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-lg flex flex-col gap-2 transition-colors duration-200">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          {t.title}
-        </h3>
-        <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> {t.headwind}
+    <div className="bg-white dark:bg-[#1c1c1f] border-2 border-zinc-900 dark:border-zinc-100 rounded-none p-5 shadow-brutal dark:shadow-brutal-dark flex flex-col gap-3 transition-colors duration-200">
+      <div className="flex items-center justify-between border-b-2 border-zinc-900 dark:border-zinc-100 pb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-lime-400 text-zinc-950 border-2 border-zinc-900 shadow-brutal-sm shrink-0">
+            <MapPin className="w-4 h-4 stroke-[2.5]" />
+          </div>
+          <h3 className="text-sm font-mono font-black uppercase tracking-wider text-zinc-950 dark:text-zinc-50">
+            {t.title}
+          </h3>
+        </div>
+
+        {/* Tactical Brutalist Legend Badges */}
+        <div className="flex items-center gap-2 text-xs font-mono">
+          <span className="px-2 py-0.5 rounded-none border-2 border-zinc-900 dark:border-zinc-100 bg-rose-400 text-zinc-950 font-bold shadow-brutal-sm text-[11px]">
+            {t.headwind}
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> {t.crosswind}
+          <span className="px-2 py-0.5 rounded-none border-2 border-zinc-900 dark:border-zinc-100 bg-amber-400 text-zinc-950 font-bold shadow-brutal-sm text-[11px]">
+            {t.crosswind}
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> {t.tailwind}
+          <span className="px-2 py-0.5 rounded-none border-2 border-zinc-900 dark:border-zinc-100 bg-lime-400 text-zinc-950 font-bold shadow-brutal-sm text-[11px]">
+            {t.tailwind}
           </span>
         </div>
       </div>
 
-      <div className="w-full h-[360px] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 relative">
+      <div className="w-full h-[360px] rounded-none overflow-hidden border-2 border-zinc-900 dark:border-zinc-100 relative shadow-brutal-sm dark:shadow-brutal-sm-dark">
         <MapContainer
           key={theme}
           center={startPt}
@@ -134,16 +151,16 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             <Polyline
               key={idx}
               positions={s.positions}
-              pathOptions={{ color: s.color, weight: 4.5, opacity: 0.85 }}
+              pathOptions={{ color: s.color, weight: 5, opacity: 0.95 }}
             />
           ))}
 
           {/* Start Marker */}
           <Marker position={startPt}>
             <Popup>
-              <div className="text-xs">
-                <b>{t.start}</b><br />
-                {t.elevation} {spatialPoints[0].elevation_m} m
+              <div className="text-xs font-mono">
+                <b className="uppercase">{t.start}</b><br />
+                {t.elevation}: {spatialPoints[0].elevation_m} m
               </div>
             </Popup>
           </Marker>
@@ -151,9 +168,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           {/* Finish Marker */}
           <Marker position={endPt}>
             <Popup>
-              <div className="text-xs">
-                <b>{t.finish}</b><br />
-                {t.distance} {(spatialPoints[spatialPoints.length - 1].distance_m / 1000).toFixed(2)} km
+              <div className="text-xs font-mono">
+                <b className="uppercase">{t.finish}</b><br />
+                {t.distance}: {(spatialPoints[spatialPoints.length - 1].distance_m / 1000).toFixed(2)} km
               </div>
             </Popup>
           </Marker>
@@ -162,9 +179,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           {hoveredPt && (
             <Marker position={hoveredPt}>
               <Popup>
-                <div className="text-xs">
-                  {t.speed} {spatialPoints[hoveredIndex!].simulated_speed_kmh.toFixed(1)} km/h<br />
-                  {t.elevation} {spatialPoints[hoveredIndex!].elevation_m.toFixed(1)} m
+                <div className="text-xs font-mono">
+                  <b className="uppercase">{t.speed}:</b> {spatialPoints[hoveredIndex!].simulated_speed_kmh.toFixed(1)} km/h<br />
+                  <b className="uppercase">{t.elevation}:</b> {spatialPoints[hoveredIndex!].elevation_m.toFixed(1)} m
                 </div>
               </Popup>
             </Marker>

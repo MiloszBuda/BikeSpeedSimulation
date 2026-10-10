@@ -188,19 +188,19 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-zinc-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none w-full max-w-4xl shadow-brutal-lg dark:shadow-brutal-lg-dark flex flex-col max-h-[92vh] overflow-hidden my-auto">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/40">
+        <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-950/40">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl text-white shadow-md shadow-teal-500/20">
               <Gauge className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 Auto-Kalibracja Parametrów (CdA, Crr, η)
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Wielojazdowa estymacja oporów z bilansu energii i walidacja Leave-One-Out
               </p>
             </div>
@@ -208,7 +208,7 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -217,16 +217,16 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
           {/* Top Bar: Tabs & Mass Input */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
             {/* Tab switch */}
-            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-xl border border-zinc-200 dark:border-zinc-700">
               <button
                 type="button"
                 onClick={() => setTab('fit')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   tab === 'fit'
-                    ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-white dark:bg-zinc-900 text-teal-700 dark:text-teal-300 shadow-sm'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                 }`}
               >
                 <Upload className="w-3.5 h-3.5" />
@@ -242,8 +242,8 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                 onClick={() => setTab('strava')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   tab === 'strava'
-                    ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-white dark:bg-zinc-900 text-orange-600 dark:text-orange-400 shadow-sm'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                 }`}
               >
                 <Bike className="w-3.5 h-3.5" />
@@ -258,8 +258,8 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
 
             {/* Parameter configuration: Mass & Window Duration */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Masa kolarz + rower:</span>
+              <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-xs">
+                <span className="text-zinc-500 dark:text-zinc-400">Masa kolarz + rower:</span>
                 <input
                   type="number"
                   min="40"
@@ -267,17 +267,17 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                   step="0.5"
                   value={massKg}
                   onChange={(e) => setMassKg(parseFloat(e.target.value) || 78)}
-                  className="w-16 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-0.5 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-teal-500"
+                  className="w-16 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 text-xs text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:border-teal-500"
                 />
-                <span className="font-medium text-slate-600 dark:text-slate-400">kg</span>
+                <span className="font-medium text-zinc-600 dark:text-zinc-400">kg</span>
               </div>
 
-              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Okno energii:</span>
+              <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-xs">
+                <span className="text-zinc-500 dark:text-zinc-400">Okno energii:</span>
                 <select
                   value={windowDurationS}
                   onChange={(e) => setWindowDurationS(parseInt(e.target.value, 10))}
-                  className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-0.5 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-teal-500"
+                  className="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 text-xs text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:border-teal-500"
                 >
                   <option value={180}>3 min (180s)</option>
                   <option value={300}>5 min (300s - zalecane)</option>
@@ -291,12 +291,12 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
           {/* TAB 1: FIT FILES UPLOAD */}
           {tab === 'fit' && (
             <div className="flex flex-col gap-4">
-              <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 dark:hover:border-teal-400 rounded-xl p-6 text-center cursor-pointer transition-colors bg-slate-50/50 dark:bg-slate-950/40 flex flex-col items-center justify-center gap-2">
+              <label className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-teal-500 dark:hover:border-teal-400 rounded-xl p-6 text-center cursor-pointer transition-colors bg-zinc-50/50 dark:bg-zinc-950/40 flex flex-col items-center justify-center gap-2">
                 <Upload className="w-8 h-8 text-teal-600 dark:text-teal-400" />
-                <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                   Wybierz lub upuść pliki .FIT (2 do 20 plików)
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md">
                   Każda jazda powinna być nagrana na zewnątrz z fizycznym miernikiem mocy. Okna z hamowaniem, postojami oraz draftingiem zostaną odrzucone automatycznie.
                 </p>
                 <input
@@ -309,8 +309,8 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
               </label>
 
               {selectedFitFiles.length > 0 && (
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
-                  <div className="px-4 py-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
+                  <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     <span>Wybrane pliki ({selectedFitFiles.length})</span>
                     <button
                       type="button"
@@ -320,13 +320,13 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                       Wyczyść listę
                     </button>
                   </div>
-                  <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  <div className="max-h-48 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
                     {selectedFitFiles.map((file, i) => (
                       <div key={i} className="px-4 py-2 flex items-center justify-between">
-                        <span className="font-mono text-slate-700 dark:text-slate-300 truncate max-w-sm">
+                        <span className="font-mono text-zinc-700 dark:text-zinc-300 truncate max-w-sm">
                           {file.name}
                         </span>
-                        <span className="text-slate-400 text-[11px]">
+                        <span className="text-zinc-400 text-[11px]">
                           {(file.size / 1024).toFixed(0)} KB
                         </span>
                       </div>
@@ -341,14 +341,14 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
           {tab === 'strava' && (
             <div className="flex flex-col gap-4">
               {!isStravaConnected ? (
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center flex flex-col items-center justify-center gap-3 bg-slate-50 dark:bg-slate-950/40">
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 text-center flex flex-col items-center justify-center gap-3 bg-zinc-50 dark:bg-zinc-950/40">
                   <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-600 dark:text-orange-400 flex items-center justify-center">
                     <Bike className="w-6 h-6" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                     Brak połączenia ze Stravą
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md">
                     Połącz konto ze Stravą, aby jednym kliknięciem pobrać strumienie aktywności (czas, prędkość, moc, nachylenie, wiatr) i przeprowadzić kalibrację.
                   </p>
                   <button
@@ -364,7 +364,7 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                   {/* Filter & Actions Bar */}
                   <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300">
+                      <label className="flex items-center gap-1.5 cursor-pointer text-zinc-700 dark:text-zinc-300">
                         <input
                           type="checkbox"
                           checked={onlyPowerMeter}
@@ -389,7 +389,7 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                         type="button"
                         onClick={loadStravaActivities}
                         disabled={isLoadingStrava}
-                        className="p-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="p-1.5 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800"
                         title="Odśwież listę"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStrava ? 'animate-spin' : ''}`} />
@@ -398,15 +398,15 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                   </div>
 
                   {/* Activities Table */}
-                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
-                    <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
+                    <div className="max-h-60 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
                       {isLoadingStrava && stravaActivities.length === 0 ? (
-                        <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2">
+                        <div className="p-8 text-center text-zinc-400 flex items-center justify-center gap-2">
                           <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
                           <span>Ładowanie aktywności ze Stravy...</span>
                         </div>
                       ) : filteredStravaActivities.length === 0 ? (
-                        <div className="p-8 text-center text-slate-400">
+                        <div className="p-8 text-center text-zinc-400">
                           Brak aktywności spełniających kryteria.
                         </div>
                       ) : (
@@ -425,7 +425,7 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                               className={`px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${
                                 isSelected
                                   ? 'bg-teal-50/70 dark:bg-teal-950/40'
-                                  : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                  : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
                               }`}
                             >
                               <div className="flex items-center gap-3 min-w-0">
@@ -436,10 +436,10 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                                   className="rounded text-teal-600 focus:ring-teal-500"
                                 />
                                 <div className="min-w-0">
-                                  <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                  <div className="font-semibold text-zinc-800 dark:text-zinc-200 truncate">
                                     {act.name}
                                   </div>
-                                  <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                  <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
                                     <span>{dateFormatted}</span>
                                     <span>•</span>
                                     <span>{distKm} km</span>
@@ -463,7 +463,7 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                                     Powermeter
                                   </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded text-[10px]">
+                                  <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded text-[10px]">
                                     Estymata
                                   </span>
                                 )}
@@ -520,7 +520,7 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
 
           {/* CALIBRATION RESULTS CARD */}
           {calibrationResult && (
-            <div className="border border-emerald-300 dark:border-emerald-800/80 rounded-2xl p-5 bg-emerald-50/40 dark:bg-emerald-950/20 flex flex-col gap-4 animate-fade-in">
+            <div className="border border-emerald-300 dark:border-emerald-800/80 rounded-none p-5 bg-emerald-50/40 dark:bg-emerald-950/20 flex flex-col gap-4 animate-fade-in">
               <div className="flex items-center justify-between border-b border-emerald-200 dark:border-emerald-800/60 pb-3">
                 <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
@@ -533,39 +533,39 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
 
               {/* Main Parameter Badges */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-1">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">CdA (aerodynamic drag area)</span>
-                  <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono">
+                <div className="p-3.5 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col gap-1">
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400">CdA (aerodynamic drag area)</span>
+                  <div className="text-xl font-black text-zinc-900 dark:text-zinc-100 font-mono">
                     {calibrationResult.cda.toFixed(3)}{' '}
-                    <span className="text-xs font-normal text-slate-400">±{calibrationResult.cda_std.toFixed(3)} m²</span>
+                    <span className="text-xs font-normal text-zinc-400">±{calibrationResult.cda_std.toFixed(3)} m²</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-1">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Crr (rolling resistance)</span>
-                  <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono">
+                <div className="p-3.5 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col gap-1">
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Crr (rolling resistance)</span>
+                  <div className="text-xl font-black text-zinc-900 dark:text-zinc-100 font-mono">
                     {calibrationResult.crr.toFixed(4)}{' '}
-                    <span className="text-xs font-normal text-slate-400">±{calibrationResult.crr_std.toFixed(4)}</span>
+                    <span className="text-xs font-normal text-zinc-400">±{calibrationResult.crr_std.toFixed(4)}</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-1">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">η (sprawność napędu)</span>
-                  <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono">
+                <div className="p-3.5 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col gap-1">
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400">η (sprawność napędu)</span>
+                  <div className="text-xl font-black text-zinc-900 dark:text-zinc-100 font-mono">
                     {(calibrationResult.eta * 100).toFixed(1)}%{' '}
                     {calibrationResult.eta_fixed ? (
                       <span className="text-[10px] text-amber-500 font-normal block">Domyślna (brak podjazdów)</span>
                     ) : (
-                      <span className="text-xs font-normal text-slate-400">±{(calibrationResult.eta_std * 100).toFixed(1)}%</span>
+                      <span className="text-xs font-normal text-zinc-400">±{(calibrationResult.eta_std * 100).toFixed(1)}%</span>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* LOO Validation & Statistics Banner */}
-              <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs flex flex-col gap-2">
+              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs flex flex-col gap-2">
                 <div className="flex flex-wrap items-center justify-between gap-2 font-medium">
-                  <span className="text-slate-700 dark:text-slate-300">
+                  <span className="text-zinc-700 dark:text-zinc-300">
                     Aktywności: <strong className="font-mono">{calibrationResult.n_activities}</strong> • Czyste okna energii: <strong className="font-mono">{calibrationResult.total_windows}</strong>
                   </span>
                   {calibrationResult.validation_mean_rmse_kmh !== null && (
@@ -576,7 +576,7 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
                 </div>
 
                 {calibrationResult.diagnostics.length > 0 && (
-                  <ul className="text-[11px] text-slate-500 dark:text-slate-400 list-disc list-inside space-y-0.5">
+                  <ul className="text-[11px] text-zinc-500 dark:text-zinc-400 list-disc list-inside space-y-0.5">
                     {calibrationResult.diagnostics.map((diag, i) => (
                       <li key={i}>{diag}</li>
                     ))}
@@ -586,17 +586,17 @@ export const AutoCalibrationModal: React.FC<AutoCalibrationModalProps> = ({
 
               {/* Per-Activity Validation Breakdown */}
               {calibrationResult.activities.length > 0 && (
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 text-xs">
-                  <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 font-semibold text-slate-700 dark:text-slate-300">
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 text-xs">
+                  <div className="px-3.5 py-2 bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800 font-semibold text-zinc-700 dark:text-zinc-300">
                     Rozbicie wg aktywności & błąd walidacji
                   </div>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-40 overflow-y-auto font-mono text-[11px]">
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-40 overflow-y-auto font-mono text-[11px]">
                     {calibrationResult.activities.map((act) => (
                       <div key={act.activity_id} className="px-3.5 py-2 flex items-center justify-between">
-                        <div className="truncate max-w-xs text-slate-800 dark:text-slate-200">
+                        <div className="truncate max-w-xs text-zinc-800 dark:text-zinc-200">
                           {act.name || act.activity_id} ({act.distance_km} km)
                         </div>
-                        <div className="flex items-center gap-3 text-slate-500">
+                        <div className="flex items-center gap-3 text-zinc-500">
                           <span>{act.windows_count} okien</span>
                           {act.loo_speed_rmse_kmh !== null && (
                             <span className="text-teal-600 dark:text-teal-400 font-semibold">

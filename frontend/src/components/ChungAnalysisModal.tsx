@@ -24,11 +24,11 @@ export const ChungAnalysisModal: React.FC<ChungAnalysisModalProps> = ({
   if (!isOpen || !chungData) return null;
 
   const isDark = theme === 'dark';
-  const tooltipBg = isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)';
-  const tooltipBorder = isDark ? '#334155' : '#cbd5e1';
-  const tooltipText = isDark ? '#f8fafc' : '#0f172a';
-  const splitLineColor = isDark ? '#1e293b' : '#f1f5f9';
-  const axisTextColor = isDark ? '#64748b' : '#475569';
+  const tooltipBg = isDark ? 'rgba(28, 28, 31, 0.98)' : 'rgba(255, 255, 255, 0.98)';
+  const tooltipBorder = isDark ? '#f4f4f5' : '#18181b';
+  const tooltipText = isDark ? '#f4f4f5' : '#18181b';
+  const splitLineColor = isDark ? '#27272a' : '#e4e4e7';
+  const axisTextColor = isDark ? '#a1a1aa' : '#52525b';
 
   const chartOption = {
     backgroundColor: 'transparent',
@@ -36,27 +36,28 @@ export const ChungAnalysisModal: React.FC<ChungAnalysisModalProps> = ({
       trigger: 'axis',
       backgroundColor: tooltipBg,
       borderColor: tooltipBorder,
-      textStyle: { color: tooltipText, fontSize: 12 },
+      borderWidth: 2,
+      textStyle: { color: tooltipText, fontSize: 12, fontFamily: 'monospace' },
     },
     legend: {
       data: [t.realElevation, t.virtualElevation],
-      textStyle: { color: axisTextColor, fontSize: 11 },
+      textStyle: { color: axisTextColor, fontSize: 11, fontFamily: 'monospace' },
       top: 0,
     },
     grid: { left: '4%', right: '4%', top: '15%', bottom: '10%' },
     xAxis: {
       type: 'category',
       data: chungData.time_offset_s.map((s) => `${s}s`),
-      axisLine: { lineStyle: { color: isDark ? '#334155' : '#cbd5e1' } },
-      axisLabel: { color: axisTextColor, fontSize: 10 },
+      axisLine: { lineStyle: { color: isDark ? '#52525b' : '#a1a1aa' } },
+      axisLabel: { color: axisTextColor, fontSize: 10, fontFamily: 'monospace' },
     },
     yAxis: {
       type: 'value',
       name: t.elevationAxis,
       scale: true,
       splitLine: { lineStyle: { color: splitLineColor } },
-      axisLabel: { color: axisTextColor, fontSize: 10 },
-      nameTextStyle: { color: axisTextColor, fontSize: 10 },
+      axisLabel: { color: axisTextColor, fontSize: 10, fontFamily: 'monospace' },
+      nameTextStyle: { color: axisTextColor, fontSize: 10, fontFamily: 'monospace' },
     },
     series: [
       {
@@ -64,89 +65,91 @@ export const ChungAnalysisModal: React.FC<ChungAnalysisModalProps> = ({
         type: 'line',
         data: chungData.real_elevation_m.map((v) => v.toFixed(2)),
         showSymbol: false,
-        lineStyle: { color: isDark ? '#818cf8' : '#6366f1', width: 2 },
+        lineStyle: { color: isDark ? '#818cf8' : '#6366f1', width: 2.5 },
       },
       {
         name: t.virtualElevation,
         type: 'line',
         data: chungData.virtual_elevation_m.map((v) => v.toFixed(2)),
         showSymbol: false,
-        lineStyle: { color: isDark ? '#14b8a6' : '#0d9488', width: 2, type: 'dashed' },
+        lineStyle: { color: isDark ? '#facc15' : '#eab308', width: 2.5, type: 'dashed' },
       },
     ],
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors duration-200">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1c1c1f] border-2 border-zinc-900 dark:border-zinc-100 rounded-none w-full max-w-3xl shadow-brutal-lg dark:shadow-brutal-lg-dark overflow-hidden flex flex-col max-h-[90vh] transition-colors duration-200">
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+        <div className="flex items-center justify-between p-4 border-b-2 border-zinc-900 dark:border-zinc-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-amber-400 text-zinc-950 border-2 border-zinc-900 shadow-brutal-sm shrink-0">
+              <Award className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <h2 className="text-base font-black font-mono uppercase tracking-wider text-zinc-950 dark:text-zinc-50">
               {t.title}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="text-zinc-700 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-zinc-50 p-1 rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm bg-zinc-100 dark:bg-zinc-800 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 overflow-y-auto flex flex-col gap-4">
+        <div className="p-5 overflow-y-auto flex flex-col gap-4 font-mono">
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t.cdaEstimated}</span>
-              <span className="text-2xl font-black font-mono text-teal-600 dark:text-teal-400">
-                {chungData.cda.toFixed(3)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">m²</span>
+            <div className="p-3 bg-zinc-50 dark:bg-[#121214] rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm">
+              <span className="text-[11px] text-zinc-600 dark:text-zinc-400 uppercase font-bold block">{t.cdaEstimated}</span>
+              <span className="text-2xl font-black font-mono text-zinc-950 dark:text-zinc-50">
+                {chungData.cda.toFixed(3)} <span className="text-xs font-normal text-zinc-500">m²</span>
               </span>
             </div>
 
-            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t.crrCoeff}</span>
+            <div className="p-3 bg-zinc-50 dark:bg-[#121214] rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm">
+              <span className="text-[11px] text-zinc-600 dark:text-zinc-400 uppercase font-bold block">{t.crrCoeff}</span>
               <span className="text-2xl font-black font-mono text-amber-600 dark:text-amber-400">
                 {chungData.crr.toFixed(4)}
               </span>
             </div>
 
-            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t.rSquared}</span>
+            <div className="p-3 bg-zinc-50 dark:bg-[#121214] rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm">
+              <span className="text-[11px] text-zinc-600 dark:text-zinc-400 uppercase font-bold block">{t.rSquared}</span>
               <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
                 {(chungData.r_squared * 100).toFixed(1)}%
               </span>
             </div>
 
-            <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">{t.rmse}</span>
+            <div className="p-3 bg-zinc-50 dark:bg-[#121214] rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm">
+              <span className="text-[11px] text-zinc-600 dark:text-zinc-400 uppercase font-bold block">{t.rmse}</span>
               <span className="text-2xl font-black font-mono text-indigo-600 dark:text-indigo-400">
-                {chungData.rmse_m.toFixed(2)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">m</span>
+                {chungData.rmse_m.toFixed(2)} <span className="text-xs font-normal text-zinc-500">m</span>
               </span>
             </div>
           </div>
 
           {/* Explanation Banner */}
-          <div className="p-3 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 rounded-xl text-xs text-teal-900 dark:text-teal-200 flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-            <span>{t.explanation}</span>
+          <div className="p-3 bg-amber-100 dark:bg-amber-950/60 border-2 border-zinc-900 dark:border-zinc-100 rounded-none text-xs text-zinc-950 dark:text-zinc-100 flex items-start gap-2 shadow-brutal-sm">
+            <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 stroke-[2.5]" />
+            <span className="leading-relaxed">{t.explanation}</span>
           </div>
 
           {/* Interactive Chart */}
-          <div className="h-[280px] w-full bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-2">
+          <div className="h-[280px] w-full bg-zinc-50 dark:bg-[#121214] rounded-none border-2 border-zinc-900 dark:border-zinc-100 p-2 shadow-brutal-sm">
             <ReactECharts option={chartOption} style={{ height: '100%', width: '100%' }} />
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3 bg-slate-50 dark:bg-slate-900">
+        <div className="p-4 border-t-2 border-zinc-900 dark:border-zinc-100 flex justify-end gap-3 bg-zinc-100 dark:bg-[#121214]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-lg transition-colors"
+            className="px-4 py-2 bg-white dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-mono font-bold rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
           >
             {t.close}
           </button>
@@ -157,7 +160,7 @@ export const ChungAnalysisModal: React.FC<ChungAnalysisModalProps> = ({
                 onApplyCda(chungData.cda, chungData.crr);
                 onClose();
               }}
-              className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+              className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-mono font-black uppercase rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
             >
               {t.applyCda}
             </button>

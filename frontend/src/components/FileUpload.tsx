@@ -53,10 +53,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`p-5 border-2 border-dashed rounded-xl cursor-pointer flex flex-col items-center justify-center gap-2 transition-all shadow-sm ${
+        className={`p-6 rounded-none border-2 border-dashed border-zinc-900 dark:border-zinc-100 cursor-pointer flex flex-col items-center justify-center gap-2 transition-all shadow-brutal dark:shadow-brutal-dark ${
           isDragging
-            ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/30'
-            : 'border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-900/80'
+            ? 'bg-amber-300 text-zinc-950'
+            : 'bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800'
         }`}
       >
         <input
@@ -73,18 +73,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             <span>{t.parsing}</span>
           </div>
         ) : fileName ? (
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-300 text-sm font-medium">
-            <FileCheck className="w-5 h-5" />
-            <span>{t.loaded} <b className="font-mono">{fileName}</b> <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">{t.clickToChange}</span></span>
+          <div className="flex items-center gap-2 text-zinc-950 dark:text-zinc-50 text-sm font-bold font-mono">
+            <FileCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+            <span>{t.loaded} <b className="font-mono underline">{fileName}</b> <span className="text-xs text-zinc-500 dark:text-zinc-400 font-normal">({t.clickToChange})</span></span>
           </div>
         ) : (
           <>
-            <UploadCloud className="w-8 h-8 text-teal-600 dark:text-teal-400" />
-            <div className="text-center">
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 block">
-                {t.dropText} <span className="text-teal-600 dark:text-teal-400 font-mono">.FIT</span>
+            <UploadCloud className="w-8 h-8 text-amber-500 stroke-[2.5]" />
+            <div className="text-center font-mono">
+              <span className="text-sm font-black text-zinc-950 dark:text-zinc-50 block uppercase tracking-wide">
+                {t.dropText} <span className="text-amber-500 font-mono">.FIT</span>
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">
                 {t.dropSubtext}
               </span>
             </div>

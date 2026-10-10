@@ -38,18 +38,19 @@ export const Header: React.FC<HeaderProps> = ({
   t,
 }) => {
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
+    <header className="border-b border-[#2e5e46]/30 bg-white/90 dark:bg-[#0a1912]/95 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl shadow-lg shadow-teal-500/20 text-white shrink-0">
-            <Bike className="w-6 h-6" />
+          <div className="p-2.5 bg-gradient-to-br from-[#10b981] via-[#059669] to-[#0f291e] rounded-2xl shadow-nordic text-white shrink-0 border border-emerald-500/30">
+            <Bike className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              AeroBike
+            <h1 className="text-lg font-black text-slate-900 dark:text-emerald-50 tracking-tight flex items-center gap-2">
+              <span>AeroBike</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#d97736] text-white font-bold tracking-wider uppercase shadow-terracotta">GRAVEL</span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-emerald-800 dark:text-emerald-400/80 font-medium">
               {t.subtitle}
             </p>
           </div>

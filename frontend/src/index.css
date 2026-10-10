@@ -2,29 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbars */
+/* Custom scrollbars - Nordic Forest & Terracotta */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #0a1912;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #2e5e46;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #d97736;
 }
 
-/* Fix Leaflet pane layering */
+/* Fix Leaflet pane layering - Nordic Organic Rounded */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   z-index: 10;
+  border: 1px solid rgba(46, 94, 70, 0.35);
 }

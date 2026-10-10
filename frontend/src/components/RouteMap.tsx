@@ -78,17 +78,20 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   }, [spatialPoints]);
 
   // Read optional CARTO API key or custom tile template from environment
-  const cartoApiKey = (import.meta.env.VITE_CARTO_API_KEY as string | undefined)?.trim();
+  const cartoApiKey = (
+    (import.meta.env.VITE_CARTO_API_KEY as string | undefined) ||
+    (import.meta.env.VITE_CARTO_AI_KEY as string | undefined)
+  )?.trim();
   const customTileUrl = (import.meta.env.VITE_CARTO_TILE_URL as string | undefined)?.trim();
 
   const defaultTileUrl = theme === 'dark'
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
     : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
   const tileUrl = customTileUrl
     ? customTileUrl
     : cartoApiKey
-    ? `${defaultTileUrl}?api_key=${encodeURIComponent(cartoApiKey)}`
+    ? `${defaultTileUrl}?key=${encodeURIComponent(cartoApiKey)}&api_key=${encodeURIComponent(cartoApiKey)}`
     : defaultTileUrl;
 
   if (coordinates.length === 0 || !bounds) {

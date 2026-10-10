@@ -14,9 +14,11 @@ Aplikacja integruje dane telemetryczne z plików aktywności FIT (moc, prędkoś
 4. Metoda wirtualnego przewyższenia Chunga (VE)
 5. Algorytm ekwiwalentu mocy (Equivalent Power Solver)
 6. Wielopoziomowa architektura integracji pogodowej (Failover)
-7. Interfejs użytkownika i moduł wizualizacji
-8. Struktura repozytorium
-9. Uruchomienie lokalne i testy
+7. Auto-kalibracja parametrów fizycznych (CdA, Crr, η) z wielu aktywności
+8. Bezpośrednia integracja ze Strava API
+9. Interfejs użytkownika i moduł wizualizacji
+10. Struktura repozytorium
+11. Uruchomienie lokalne i testy
 
 ---
 
@@ -306,40 +308,146 @@ Algorytm działania:
 
 ---
 
-## 7. Interfejs użytkownika i moduł wizualizacji
+---
+
+## 7. Auto-kalibracja parametrów fizycznych ($CdA$, $Crr$, $\eta$) z wielu aktywności
+
+Moduł auto-kalibracji (`CalibrationService`) rozwiązuje fundamentalny problem estymacji parametrów oporów ruchu: zamiast zgadywać aerodynamikę ($CdA$), opory toczenia ($Crr$) i sprawność napędu ($\eta$), estymuje je globalnie na podstawie zbioru 5–15 rzeczywistych przejazdów szosowych z miernikiem mocy.
+
+### 7.1. Równanie całkowego bilansu energii okien czasowych
+
+Aktywności dzielone są na ruchome okna czasowe $W_k$ o długości $5 - 15\text{ min}$ (domyślnie $300\text{ s}$ z przesunięciem $120\text{ s}$). Zamiast ciągłej integracji wirtualnej wysokości (gdzie dryf całkowania kumuluje się w czasie), na każdym oknie $k$ formułowany jest bilans energii mechanicznej:
+
+$$m g \Delta h_k + \frac{1}{2} m \Delta(v^2)_k = \eta \int_{W_k} P(t) \, dt - CdA \int_{W_k} \frac{1}{2} \rho(t) \, v_{\text{app}}(t)^2 \, v(t) \, dt - Crr \cdot m g \int_{W_k} v(t) \, dt$$
+
+Równanie to jest **ściśle liniowe** względem wektora parametrów $\mathbf{x} = [\eta, CdA, Crr]^T$:
+
+$$\mathbf{y}_k = A_{k, 0} \cdot \eta + A_{k, 1} \cdot CdA + A_{k, 2} \cdot Crr$$
+
+gdzie:
+- $\mathbf{y}_k = m g \Delta h_k + \frac{1}{2} m (v_{\text{end}}^2 - v_{\text{start}}^2)$ — przyrost energii potencjalnej i kinetycznej,
+- $A_{k, 0} = \int_{W_k} P(t) \, dt$ — praca mechaniczna wygenerowana na korbie,
+- $A_{k, 1} = -\int_{W_k} \frac{1}{2} \rho v_{\text{app}}^2 v \, dt$ — całka aerodynamiczna oporu wiatru pozornego,
+- $A_{k, 2} = -m g \int_{W_k} v \, dt = -m g \cdot \Delta s_k$ — całka drogi oporu toczenia.
+
+### 7.2. Selekcja i filtracja jakościowa danych
+
+Algorytm kalibracji odrzuca fragmenty zakłócające bilans energii:
+1. **Wykluczenie trenażerów i estymat mocy:** Akceptowane są wyłącznie aktywności outdoorowe (`trainer = false`) z fizycznym miernikiem mocy (`device_watts = true`).
+2. **Filtracja rozgrzewki:** Pierwsze 5 minut każdej jazdy jest odrzucane (niestabilny opór opon, rozgrzewka napędu).
+3. **Maska postojów i niskich prędkości:** Okna ze średnią prędkością $v < 2.5\text{ m/s}$ ($9\text{ km/h}$) są odrzucane.
+4. **Maska hamowania na zjazdach:** Wycinane są segmenty, w których ujemne przyspieszenie wskazuje na użycie hamulców ($f_{\text{brake}} > 0.05\text{ N/kg}$).
+5. **Wymóg różnicowania prędkości:** Szeroki rozrzut prędkości w oknach umożliwia odróżnienie oporu toczenia ($F_{\text{rr}} \propto v$) od aerodynamiki ($F_{\text{aero}} \propto v^3$).
+
+### 7.3. Ograniczony i Bayesowsko regularyzowany solwer (Bounded LS)
+
+Układ równań ze wszystkich okien $M$ składany jest w macierz $\mathbf{A} \in \mathbb{R}^{M \times 3}$ oraz wektor $\mathbf{y} \in \mathbb{R}^M$. Rozwiązywany jest metodą ograniczonego najmniejszego błędu kwadratowego (`scipy.optimize.lsq_linear`):
+
+$$\min_{\mathbf{x}} \|\mathbf{A}_{\text{aug}} \mathbf{x} - \mathbf{y}_{\text{aug}}\|_2^2 \quad \text{przy warunku} \quad \mathbf{lb} \le \mathbf{x} \le \mathbf{ub}$$
+
+Zastosowane fizyczne granice i priory szosowe:
+- $\eta \in [0.940, 0.985]$, prior $\eta_0 = 0.970$ (sprawność napędu 2x/1x),
+- $CdA \in [0.200, 0.550]\text{ m}^2$, prior $CdA_0 = 0.340\text{ m}^2$ (kolarz szosowy w chwycie na łapach),
+- $Crr \in [0.0028, 0.0065]$, prior $Crr_0 = 0.0042$ (dobre opony szosowe na asfalcie).
+
+Wagi regularyzacji bayesowskiej są skalowane normami kolumnowymi macierzy $\mathbf{A}$, co zabezpiecza algorytm przed ucieczką współczynnika toczenia $Crr$ do sztucznych wartości granicznych kosztem aerodynamiki.
+
+### 7.4. Heurystyka identyfikowalności $\eta$
+
+Sprawność napędu $\eta$ jest nierozróżnialna od błędu wzmocnienia miernika mocy na trasach płaskich. Wyznacza ją wyłącznie człon grawitacyjny $m g \Delta h$.
+- Jeśli zróżnicowanie przewyższeń w oknach wynosi $\sigma(\Delta h) < 4.0\text{ m}$, łączny wznios $< 80\text{ m}$ lub maksymalny wznios w oknie $< 15\text{ m}$:
+  - Sprawność napędu zostaje automatycznie zablokowana na wartości $\eta = 0.970$.
+  - Przeniesiony zostaje człon mocy na prawą stronę: $\mathbf{y}_{\text{sub}} = \mathbf{y} - 0.97 \cdot \mathbf{A}_{:, 0}$.
+  - Rozwiązywany jest stabilny układ dwuparametrowy dla $(CdA, Crr)$, a użytkownik otrzymuje czytelny komunikat diagnostyczny.
+
+### 7.5. Walidacja krzyżowa Leave-One-Out (LOO)
+
+Dokładność kalibracji weryfikowana jest walidacją krzyżową:
+1. Model estymuje parametry na zbiorze $N - 1$ aktywności.
+2. Pominięta $N$-ta aktywność jest symulowana numerycznym silnikiem Heuna z jej rzeczywistym profilem mocy i pogodą ERA5.
+3. Obliczany jest błąd średniokwadratowy prędkości ($RMSE\text{ [km/h]}$) oraz błąd bezwzględny całkowitego czasu przejazdu.
+4. Zaakceptowane parametry są automatycznie podstawiane do symulatora z plakietką statusu (np. `auto, n=12, CdA 0.338 ±0.012`).
+
+---
+
+## 8. Bezpośrednia integracja ze Strava API
+
+Integracja ze Stravą eliminuje konieczność manualnego eksportu i przeciągania plików `.fit`.
+
+### 8.1. Architektura OAuth 2.0 i bezpieczeństwo danych
+
+- **Flow autoryzacji:** Standard OAuth 2.0 Authorization Code flow z zakresem `activity:read_all` (umożliwia dostęp także do jazd oznaczonych statusem prywatnym).
+- **Bezpieczeństwo tokenów:** Tokeny dostępu (`access_token`) i odświeżania (`refresh_token`) są przechowywane wyłącznie po stronie serwera w lokalnej bazie SQLite (`backend/data/strava.db`). Tokeny **nigdy nie trafiają do `localStorage` przeglądarki**.
+- **Automatyczna rotacja:** Token dostępu jest weryfikowany przed każdym żądaniem i odświeżany automatycznie, gdy do wygaśnięcia pozostaje mniej niż 5 minut.
+- **Zgodność z API Agreement Stravy:** Dane są przechowywane ściśle per-użytkownik, nie są agregowane ani przekazywane do zewnętrznych modeli sztucznej inteligencji.
+
+### 8.2. Pobieranie strumieni telemetrycznych 1 Hz
+
+Ponieważ API Stravy nie udostępnia bezpośrednio oryginalnych plików `.fit`, aplikacja wykorzystuje endpoint strumieni (`GET /activities/{id}/streams`):
+- Pobierane strumienie: `time`, `distance`, `latlng`, `altitude`, `velocity_smooth`, `watts`, `cadence`, `temp`, `moving`.
+- **`StravaAdapter`:**
+  - Prędkość naziemna wyliczana jest bezpośrednio z przyrostów odległości $\Delta d / \Delta t$, co eliminuje nadmierne wygładzenie strumienia `velocity_smooth` i zachowuje dynamikę przyspieszeń.
+  - Wyliczany jest azymut geograficzny (great-circle initial bearing) z kolejnych punktów GPS lat/lng.
+  - Generowane są struktury `TrackPoint` i `FitSummary` w 100% zgodne z pipeline'em parsera FIT.
+
+### 8.3. Rate-Limiting i dwupoziomowy Cache
+
+- Odpowiedzi nagłówkowe Stravy (`X-RateLimit-Limit`, `X-RateLimit-Usage`) są monitorowane w czasie rzeczywistym pod kątem limitów (200 req / 15 min, 2000 req / dobę).
+- Pobrane strumienie są trwale buforowane w lokalnej bazie SQLite, dzięki czemu ponowne uruchomienie symulacji lub kalibracji nie zużywa limitów API.
+- Wygodny interfejs **1-kliknięcia** w modalu Stravy z automatycznym wsparciem dla podścieżek hostingu GitHub Pages (`/BikeSpeedSimulation/`).
+
+---
+
+## 9. Interfejs użytkownika i moduł wizualizacji
 
 Frontend zbudowano w oparciu o **React 18**, **TypeScript**, **Tailwind CSS** oraz **Vite**:
 
-- **Interaktywny kompas wiatru (WindCompass):** Wskazuje wektor przepływu strumienia wiatru (obrót igły o $180^\circ$, podaje kąt natarcia i źródło meteo).
-- **Przełącznik motywu (Dark / Light Mode):** Pełna obsługa trybu ciemnego i jasnego (`localStorage`).
-- **Wielojęzyczność (PL / EN):** Moduł i18n obsługujący pełne tłumaczenie interfejsu.
-- **Wykresy telemetryczne (Apache ECharts):** Zsynchronizowany dwupoziomowy profil wysokości, prędkości, mocy oraz delty czasu.
+- **Auto-Kalibracja aero (AutoCalibrationModal):** Okno konfiguracji masy, wyboru aktywności (pliki FIT lub pobrane ze Stravy), postępu estymacji parametrów $CdA \pm \sigma$, $Crr \pm \sigma$, $\eta \pm \sigma$ oraz wyników walidacji krzyżowej Leave-One-Out.
+- **Integracja Strava (StravaModal):** Panel 1-kliknięcia z podglądem profilu zawodnika, filtrowaniem aktywności z miernikiem mocy, pobieraniem strumieni i bezpośrednim ładowaniem trasy do symulatora.
+- **Interaktywny kompas wiatru (WindCompass):** Wskazuje wektor przepływu strumienia wiatru (obrót igły o $180^\circ$, podaje kąt natarcia i źródło meteo) ze zwartymi presetami kierunków N, E, S, W i szybkimi obrotami.
+- **Zaawansowane parametry fizyczne (SimulationControls):** Wyrównane, wyśrodkowane pola edycji masy, $CdA$, $Crr$ i $\eta$ z plakietką informującą o automatycznej kalibracji oraz przyciskiem resetu do wartości domyślnych.
+- **Przełącznik motywu (Dark / Light Mode):** Pełna obsługa trybu ciemnego i jasnego z persystencją w `localStorage`.
+- **Wielojęzyczność (PL / EN):** Zunifikowany moduł i18n ze spójnym układem nagłówka na ekranach desktopowych i mobilnych.
+- **Wykresy telemetryczne (Apache ECharts):** Zsynchronizowany dwupoziomowy profil wysokości, prędkości, mocy oraz delty czasu z interaktywnym kursorem.
 - **Interaktywna mapa trasy (Leaflet):** Segmentacja polilinii GPS według kąta natarcia wiatru pozornego.
 
 ---
 
-## 8. Struktura repozytorium
+## 10. Struktura repozytorium
 
 ```
 BikeSpeedSimulation/
 |-- backend/
 |   |-- app/
 |   |   |-- api/
-|   |   |   +-- endpoints.py             # Endpointy REST: /process, /simulate, /estimate-cda, /health
-|   |   |-- core/
-|   |   |   +-- config.py                # Konfiguracja srodowiskowa i CORS
-|   |   |-- models/
-|   |   |   +-- schemas.py               # Pydantic v2 schematy wejsciowe i wyjsciowe
+|   |   |   |-- endpoints.py             # Endpointy symulacji: /process, /simulate, /estimate-cda, /health
+|   |   |   |-- calibration_endpoints.py # Endpointy kalibracji: /calibrate-fit, /calibrate-strava, /latest
+|   |   |   +-- strava_endpoints.py      # Endpointy Stravy: /auth-url, /exchange-token, /activities, /process
+|   |   |-- config.py                    # Konfiguracja srodowiskowa, stale fizyczne i granice kalibracji
+|   |   |-- schemas/
+|   |   |   |-- fit.py                   # Pydantic modele telemetrii FIT i punktow wzbogaconych
+|   |   |   |-- simulation.py            # Schematy symulacji What-If i pacingu
+|   |   |   |-- calibration.py           # Schematy okien energii, zadan kalibracji i raportu LOO
+|   |   |   +-- strava.py                # Schematy autoryzacji OAuth, zawodnika i aktywnosci Stravy
 |   |   |-- services/
-|   |   |   |-- fit_parser.py            # Parser binarny FIT, wygladzanie SG, wyliczanie NP
-|   |   |   |-- weather_service.py       # Pobor pogody, kaskadowy fallback (Open-Meteo, DWD, ISA)
+|   |   |   |-- fit_parser.py            # Parser binarny FIT, wygladzanie SG, NP i metryki
+|   |   |   |-- weather_service.py       # Pobor pogody, kaskadowy fallback (Open-Meteo, DWD, MET Norway, ISA)
 |   |   |   |-- physics_solver.py        # Numeryczny solver rownania mocy, bisekcja, bilans sil
-|   |   |   |-- simulation_engine.py     # Dyskretny silnik przestrzenny dx=5m, pacing, inercja
-|   |   |   |-- chung_service.py         # Metoda Virtual Elevation, estymacja CdA i Crr
+|   |   |   |-- simulation_engine.py     # Dyskretny silnik przestrzenny dx=5m, metoda Heuna, pacing
+|   |   |   |-- chung_service.py         # Metoda Virtual Elevation, profil wirtualnej wysokosci
+|   |   |   |-- calibration_service.py   # Bilans energii okien, lsq_linear (CdA, Crr, eta), walidacja LOO
+|   |   |   |-- strava_service.py        # Klient Strava v3 API, zarzadzanie tokenami, SQLite cache
+|   |   |   |-- strava_adapter.py        # Adapter strumieni Stravy do TrackPoint i FitSummary
 |   |   |   +-- wind_analysis.py         # Analiza wektora pozornego, rozklad czolowy/boczny
-|   |   +-- main.py                      # Punkt wejsciowy FastAPI
-|   |-- tests/                           # 59 testow jednostkowych i integracyjnych pytest
-|   |-- pyproject.toml                   # Zaleznosci backendu (Poetry / Pip)
+|   |   +-- main.py                      # Punkt wejsciowy FastAPI z rejestracja routerow
+|   |-- data/
+|   |   +-- strava.db                    # Lokalna baza SQLite na tokeny i strumienie Stravy
+|   |-- tests/                           # 76 testow jednostkowych i integracyjnych pytest
+|   |   |-- test_api.py                  # Testy endpointow bazowych symulacji
+|   |   |-- test_calibration_service.py  # Testy okien energii, odzyskiwania parametrów i walidacji LOO
+|   |   |-- test_strava_service.py       # Testy adaptera strumieni, obliczen predkosci i SQLite
+|   |   +-- test_calibration_and_strava_api.py # Testy API autoryzacji i kalibracji
+|   |-- pyproject.toml                   # Zaleznosci backendu (FastAPI, Scipy, Numpy, Httpx, Respx)
 |   +-- Dockerfile                       # Obraz produkcyjny dla platformy Render
 |
 |-- frontend/
@@ -353,31 +461,35 @@ BikeSpeedSimulation/
 |   |   |   |-- TelemetryCharts.tsx      # Wykresy ECharts z dwoma siatkami i synchronizacja
 |   |   |   |-- RouteMap.tsx             # Mapa Leaflet z kolorowaniem wektorow wiatru
 |   |   |   |-- ChungAnalysisModal.tsx   # Modal profilu wirtualnej wysokosci Chunga
+|   |   |   |-- AutoCalibrationModal.tsx # Modal wielo-aktywnosciowej kalibracji CdA/Crr/eta
+|   |   |   |-- StravaModal.tsx          # Modal eksploratora aktywnosci i 1-click logowania Strava
 |   |   |   +-- Tooltip.tsx              # Popover edukacyjny z wyjasnieniem fizyki
 |   |   |-- i18n/
 |   |   |   +-- translations.ts          # Slowniki tlumaczen PL / EN
 |   |   |-- services/
-|   |   |   +-- api.ts                   # Klient HTTP komunikacji z backendem Render
+|   |   |   +-- api.ts                   # Klient HTTP komunikacji z backendem Render (symulacja, Strava, kalibracja)
+|   |   |-- types/
+|   |   |   +-- simulation.ts            # Definicje typow TypeScript dla calej aplikacji
 |   |   |-- utils/
 |   |   |   +-- storage.ts               # Persystencja parametrow CdA/Crr/masy w localStorage
 |   |   |-- App.tsx                      # Glowny kontener stanu aplikacji
 |   |   +-- main.tsx                     # Bootstrapper React
-|   |-- package.json                     # Zaleznosci npm
-|   |-- tailwind.config.js               # Konfiguracja Tailwind (darkMode: 'class')
+|   |-- package.json                     # Zaleznosci npm (React, ECharts, Leaflet, Lucide, Tailwind)
+|   |-- tailwind.config.js               # Konfiguracja Tailwind CSS (darkMode: 'class')
 |   +-- vite.config.ts                   # Konfiguracja bundlera Vite
 +-- README.md                            # Niniejsza dokumentacja techniczna
 ```
 
 ---
 
-## 9. Uruchomienie lokalne i testy
+## 11. Uruchomienie lokalne i testy
 
-### 9.1. Wymagania wstępne
+### 11.1. Wymagania wstępne
 
 - Python 3.11 lub 3.12
 - Node.js 18+ oraz npm
 
-### 9.2. Uruchomienie backendu
+### 11.2. Uruchomienie backendu
 
 ```bash
 cd backend
@@ -395,21 +507,21 @@ uvicorn app.main:app --reload --port 8000
 
 Dokumentacja OpenAPI (Swagger UI): http://127.0.0.1:8000/docs
 
-Uruchomienie pełnego pakietu testów:
+Uruchomienie pełnego pakietu 76 testów jednostkowych i integracyjnych:
 
-```Bash
+```bash
 pytest backend/tests
 ```
 
-### 9.3. Uruchomienie frontendu
+### 11.3. Uruchomienie frontendu
 
-```Bash
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Aplikacja dostępna pod adresem: http://localhost:3000
+Aplikacja dostępna pod adresem: http://localhost:3000 (lub http://localhost:5173)
 
 Weryfikacja typowania i budowanie produkcyjne:
 

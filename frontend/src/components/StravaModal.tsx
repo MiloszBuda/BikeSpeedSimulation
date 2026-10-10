@@ -12,6 +12,8 @@ import {
   Key,
   ShieldCheck,
   Calendar,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   StravaActivityMeta,
@@ -48,6 +50,7 @@ export const StravaModal: React.FC<StravaModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
   const [onlyPower, setOnlyPower] = useState<boolean>(false);
+  const [showCustomConfig, setShowCustomConfig] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -74,15 +77,31 @@ export const StravaModal: React.FC<StravaModalProps> = ({
 
   const handleConnect = async () => {
     try {
-      if (clientId) {
-        localStorage.setItem('strava_client_id', clientId);
+      const trimmedCid = clientId.trim();
+      const trimmedSec = clientSecret.trim();
+
+      if (trimmedCid) {
+        localStorage.setItem('strava_client_id', trimmedCid);
+      } else {
+        localStorage.removeItem('strava_client_id');
       }
-      if (clientSecret) {
-        localStorage.setItem('strava_client_secret', clientSecret);
+      if (trimmedSec) {
+        localStorage.setItem('strava_client_secret', trimmedSec);
+      } else {
+        localStorage.removeItem('strava_client_secret');
       }
+
+      // If server does not have global credentials and user hasn't provided custom client_id
+      if (!authStatus?.has_credentials && !trimmedCid) {
+        setShowCustomConfig(true);
+        setErrorMsg('Serwer nie ma skonfigurowanych zmiennych STRAVA_CLIENT_ID / SECRET. Wprowadź Client ID i Client Secret poniżej lub skonfiguruj serwer.');
+        return;
+      }
+
+      setErrorMsg(null);
       // Preserve current application pathname (crucial for GitHub Pages subpath e.g. /BikeSpeedSimulation/)
       const redirectUri = `${window.location.origin}${window.location.pathname}`.replace(/\/$/, '') + '/';
-      const { auth_url } = await getStravaAuthUrl(clientId || undefined, redirectUri);
+      const { auth_url } = await getStravaAuthUrl(trimmedCid || undefined, redirectUri);
       window.location.href = auth_url;
     } catch (err: any) {
       setErrorMsg(err.message || 'Nie udało się wygenerować adresu autoryzacji Strava');
@@ -235,66 +254,121 @@ export const StravaModal: React.FC<StravaModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="p-5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/40 flex flex-col gap-4">
-              <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold text-sm">
-                <Key className="w-4 h-4 text-orange-500" />
-                <span>Konfiguracja aplikacji Strava API</span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Aby autoryzować pobieranie aktywności, aplikacja wymaga zarejestrowanego identyfikatora w panelu deweloperskim Stravy:{' '}
-                <a
-                  href="https://www.strava.com/settings/api"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-orange-600 dark:text-orange-400 underline font-semibold inline-flex items-center gap-0.5"
-                >
-                  strava.com/settings/api <ExternalLink className="w-3 h-3" />
-                </a>
-                . W panelu Stravy w polu <strong>Authorization Callback Domain</strong> wpisz dokładnie:{' '}
-                <code className="bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300 font-bold px-1.5 py-0.5 rounded font-mono">
-                  {window.location.hostname}
-                </code>{' '}
-                <span className="text-slate-500 dark:text-slate-400 font-normal">
-                  (samą nazwę domeny bez portu i protokołu — np. wpisz <code className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">localhost</code>, NIE wpisuj <code className="font-mono line-through text-rose-500">localhost:5173</code>).
-                </span>
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    Client ID:
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="np. 123456"
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-orange-500"
-                  />
+            <div className="p-5 sm:p-6 border border-orange-200/70 dark:border-orange-950/70 rounded-2xl bg-gradient-to-br from-orange-50/70 via-white to-amber-50/50 dark:from-orange-950/20 dark:via-slate-900/90 dark:to-amber-950/10 flex flex-col gap-5 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FC4C02] text-white flex items-center justify-center shadow-lg shadow-orange-500/20 flex-shrink-0">
+                    <Bike className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
+                      Połącz z kontem Strava
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Bezpośrednia synchronizacja aktywności z miernika mocy do symulacji i kalibracji parametrów
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    Client Secret:
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="np. 78a9bc..."
-                    value={clientSecret}
-                    onChange={(e) => setClientSecret(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-orange-500"
-                  />
-                </div>
-              </div>
 
-              <div className="flex items-center justify-end pt-1">
                 <button
                   type="button"
                   onClick={handleConnect}
-                  className="px-5 py-2.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all active:scale-[0.99]"
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-[#FC4C02] hover:bg-[#E34402] text-white rounded-xl text-sm font-bold shadow-md shadow-orange-600/25 hover:shadow-orange-600/35 flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] flex-shrink-0"
                 >
                   <Bike className="w-4 h-4" />
-                  <span>Zaloguj przez Strava (OAuth)</span>
+                  <span>Połącz ze Stravą</span>
+                  <ExternalLink className="w-3.5 h-3.5 opacity-80" />
                 </button>
+              </div>
+
+              {/* Benefits list */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-orange-200/50 dark:border-orange-950/50 text-xs">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 block">Strumienie 1 Hz</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Moc, prędkość, profil i kadencja sekunda po sekundzie</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 block">Auto-kalibracja aero</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Wyznaczanie realnego CdA, Crr i sprawności napędu η</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-teal-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 block">OAuth 2.0 & Prywatność</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Brak dostępu do haseł, bezpieczna autoryzacja API</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Collapsible Advanced Developer API Settings */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomConfig(!showCustomConfig)}
+                  className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 font-medium flex items-center gap-1.5 transition-colors"
+                >
+                  <Key className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Zaawansowane: własna aplikacja Strava API (opcjonalne)</span>
+                  {showCustomConfig ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  {authStatus?.has_credentials && (
+                    <span className="ml-1.5 px-2 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded text-[10px] font-semibold border border-emerald-300 dark:border-emerald-800">
+                      Serwer skonfigurowany
+                    </span>
+                  )}
+                </button>
+
+                {showCustomConfig && (
+                  <div className="mt-3 p-4 bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col gap-3 text-xs animate-fade-in">
+                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Domyślnie używana jest globalna konfiguracja serwera. Jeśli uruchamiasz backend lokalnie lub chcesz użyć własnej aplikacji ze{' '}
+                      <a
+                        href="https://www.strava.com/settings/api"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-orange-600 dark:text-orange-400 underline font-semibold inline-flex items-center gap-0.5"
+                      >
+                        strava.com/settings/api <ExternalLink className="w-3 h-3" />
+                      </a>
+                      , podaj poniższe dane (zostaną zapamiętane w Twojej przeglądarce):
+                    </p>
+                    <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 text-[11px]">
+                      W panelu Stravy w polu <strong>Authorization Callback Domain</strong> wpisz dokładnie: <code className="font-bold font-mono text-orange-600 dark:text-orange-400">{window.location.hostname}</code> (samą domenę, bez portu ani protokołu).
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                          Client ID:
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="np. 123456"
+                          value={clientId}
+                          onChange={(e) => setClientId(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                          Client Secret:
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="np. 78a9bc..."
+                          value={clientSecret}
+                          onChange={(e) => setClientSecret(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

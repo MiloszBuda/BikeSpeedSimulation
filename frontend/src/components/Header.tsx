@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   t,
 }) => {
   return (
-    <header className="border-b-2 border-zinc-900 dark:border-zinc-100 bg-white/75 dark:bg-black/75 backdrop-blur-2xl sticky top-0 z-40 transition-colors duration-200 shadow-[0_4px_0px_#18181b] dark:shadow-[0_4px_0px_#f4f4f5]">
+    <header className="border-b-2 border-zinc-900 dark:border-zinc-100 bg-white/85 dark:bg-[#121214]/90 backdrop-blur-2xl sticky top-0 z-40 transition-colors duration-200 shadow-[0_4px_0px_#18181b] dark:shadow-[0_4px_0px_#f4f4f5]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Logo & Title */}
         <div className="flex items-center gap-3">

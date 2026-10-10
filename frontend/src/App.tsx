@@ -514,7 +514,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-[#f4f4f0] text-zinc-950 dark:bg-[#121214] dark:text-zinc-100 transition-colors duration-200">
       {/* Top Header */}
       <Header
         isBackendOnline={isBackendOnline}
@@ -538,19 +538,19 @@ export const App: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
         {/* Adblock / Client Blocked Notification Banner */}
         {isBlockedByClient && (
-          <div className="bg-rose-50 dark:bg-rose-950/80 border-2 border-rose-300 dark:border-rose-500/80 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-rose-900 dark:text-rose-200 text-xs shadow-xl backdrop-blur-sm">
+          <div className="bg-rose-200 dark:bg-rose-950 border-2 border-zinc-900 dark:border-zinc-100 p-4 rounded-none flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-zinc-950 dark:text-zinc-100 text-xs shadow-brutal dark:shadow-brutal-dark font-mono">
             <div className="flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <ShieldAlert className="w-5 h-5 text-rose-700 dark:text-rose-400 shrink-0 mt-0.5" />
               <div>
-                <strong className="block text-rose-950 dark:text-rose-100 font-semibold text-sm mb-1">
+                <strong className="block text-zinc-950 dark:text-zinc-50 font-black text-sm mb-1 uppercase tracking-wide">
                   {lang === 'pl' ? 'Wykryto blokadę rozszerzenia przeglądarki (net::ERR_BLOCKED_BY_CLIENT)' : 'Browser Extension Block Detected (net::ERR_BLOCKED_BY_CLIENT)'}
                 </strong>
-                <p className="text-rose-800 dark:text-rose-300 leading-relaxed">
+                <p className="text-zinc-800 dark:text-zinc-200 leading-relaxed">
                   {lang === 'pl'
                     ? 'Twoje rozszerzenie blokujące reklamy lub skrypty śledzące (np. uBlock Origin, AdBlock, AdGuard lub Brave Shields) zablokowało komunikację z serwerem obliczeniowym Render.'
                     : 'Your adblock or privacy extension (e.g., uBlock Origin, AdBlock, AdGuard, or Brave Shields) blocked communication with the Render simulation backend.'}
                 </p>
-                <div className="mt-2 text-rose-900 dark:text-rose-200">
+                <div className="mt-2 text-zinc-900 dark:text-zinc-100 font-bold">
                   👉 <b>{lang === 'pl' ? 'Rozwiązanie:' : 'Solution:'}</b> {lang === 'pl' ? 'Kliknij ikonę Adblocka na pasku i wyłącz blokowanie dla strony miloszbuda.github.io, a następnie kliknij przycisk obok.' : 'Click your Adblock icon in the toolbar, disable blocking for miloszbuda.github.io, and click retry.'}
                 </div>
               </div>
@@ -558,7 +558,7 @@ export const App: React.FC = () => {
             <button
               type="button"
               onClick={handleRetryBackend}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg shadow transition-all active:scale-95 shrink-0"
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-mono font-bold rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none shrink-0"
             >
               {lang === 'pl' ? 'Sprawdź ponownie' : 'Retry connection'}
             </button>
@@ -668,7 +668,7 @@ export const App: React.FC = () => {
       />
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-850 bg-white/40 dark:bg-slate-900/40 py-4 text-center text-xs text-slate-500 transition-colors duration-200">
+      <footer className="border-t-2 border-zinc-900 dark:border-zinc-100 bg-white dark:bg-[#1c1c1f] py-4 text-center text-xs font-mono font-bold text-zinc-600 dark:text-zinc-400 transition-colors duration-200">
         AeroBike Simulation Engine • FastAPI Backend • Open-Meteo ERA5 Reanalysis • React & Apache ECharts
       </footer>
     </div>

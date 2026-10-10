@@ -14,7 +14,7 @@
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: #0a0a0c;
+  background: #121214;
   border-left: 2px solid #f4f4f5;
 }
 
@@ -36,9 +36,31 @@
   z-index: 10;
   border: 2px solid #18181b;
   box-shadow: 4px 4px 0px 0px #18181b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .dark .leaflet-container {
   border: 2px solid #f4f4f5;
   box-shadow: 4px 4px 0px 0px #f4f4f5;
+}
+
+/* Sharp Neo-Brutalist Leaflet popups */
+.leaflet-popup-content-wrapper {
+  border-radius: 0px !important;
+  border: 2px solid #18181b !important;
+  background: #ffffff !important;
+  color: #18181b !important;
+  box-shadow: 3px 3px 0px 0px #18181b !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+.dark .leaflet-popup-content-wrapper {
+  background: #1c1c1f !important;
+  color: #f4f4f5 !important;
+  border: 2px solid #f4f4f5 !important;
+  box-shadow: 3px 3px 0px 0px #f4f4f5 !important;
+}
+
+.dark .leaflet-popup-tip {
+  background: #1c1c1f !important;
 }

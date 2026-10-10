@@ -30,22 +30,23 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
     const powers = spatialPoints.map((p) => p.power_w.toFixed(0));
     const deltaTimes = spatialPoints.map((p) => p.delta_time_s.toFixed(1));
 
-    const tooltipBg = isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.96)';
-    const tooltipBorder = isDark ? '#334155' : '#cbd5e1';
-    const tooltipText = isDark ? '#f8fafc' : '#0f172a';
-    const splitLineColor = isDark ? '#1e293b' : '#f1f5f9';
-    const axisTextColor = isDark ? '#94a3b8' : '#64748b';
+    const tooltipBg = isDark ? 'rgba(28, 28, 31, 0.98)' : 'rgba(255, 255, 255, 0.98)';
+    const tooltipBorder = isDark ? '#f4f4f5' : '#18181b';
+    const tooltipText = isDark ? '#f4f4f5' : '#18181b';
+    const splitLineColor = isDark ? '#27272a' : '#e4e4e7';
+    const axisTextColor = isDark ? '#a1a1aa' : '#52525b';
 
     return {
       backgroundColor: 'transparent',
       animation: false,
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'cross', label: { backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f8fafc' : '#0f172a' } },
+        axisPointer: { type: 'cross', label: { backgroundColor: isDark ? '#1c1c1f' : '#f4f4f5', color: isDark ? '#f4f4f5' : '#18181b' } },
         backgroundColor: tooltipBg,
         borderColor: tooltipBorder,
-        borderWidth: 1,
-        textStyle: { color: tooltipText, fontSize: 12 },
+        borderWidth: 2,
+        extraCssText: isDark ? 'box-shadow: 3px 3px 0px 0px #f4f4f5; border-radius: 0px;' : 'box-shadow: 3px 3px 0px 0px #18181b; border-radius: 0px;',
+        textStyle: { color: tooltipText, fontSize: 12, fontFamily: 'monospace' },
         formatter: (params: any) => {
           if (!params || params.length === 0) return '';
           const idx = params[0].dataIndex;
@@ -60,29 +61,29 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
           const slopePct = (p.slope * 100).toFixed(1);
 
           return `
-            <div class="font-sans text-xs">
-              <div class="font-bold border-b ${isDark ? 'border-slate-700 text-slate-200' : 'border-slate-200 text-slate-800'} pb-1 mb-1">
+            <div class="font-mono text-xs">
+              <div class="font-bold border-b ${isDark ? 'border-zinc-700 text-zinc-100' : 'border-zinc-300 text-zinc-900'} pb-1 mb-1">
                 ${t.distance} ${km} km | ${t.slope} ${slopePct}%
               </div>
-              <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <div class="flex items-center gap-2 text-indigo-500 dark:text-indigo-400">
                 <span>${t.elevation}:</span> <b class="font-mono">${elev} m</b>
               </div>
-              <div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+              <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
                 <span>${t.baseSpeed}:</span> <b class="font-mono">${vBase} km/h</b>
               </div>
-              <div class="flex items-center gap-2 text-teal-600 dark:text-teal-400">
+              <div class="flex items-center gap-2 text-amber-500 dark:text-amber-400">
                 <span>${t.simSpeed}:</span> <b class="font-mono">${vSim} km/h</b>
               </div>
-              <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <div class="flex items-center gap-2 text-orange-500 dark:text-orange-400">
                 <span>${t.power}:</span> <b class="font-mono">${p.power_w.toFixed(0)} W</b>
-                ${p.power_effective_w !== undefined && Math.abs(p.power_effective_w - p.power_w) > 5 ? `<span class="text-amber-500 font-mono text-[11px]">(${t.effective} ${p.power_effective_w.toFixed(0)} W)</span>` : ''}
+                ${p.power_effective_w !== undefined && Math.abs(p.power_effective_w - p.power_w) > 5 ? `<span class="font-mono text-[11px]">(${t.effective} ${p.power_effective_w.toFixed(0)} W)</span>` : ''}
               </div>
               ${p.acceleration_mps2 !== undefined ? `
-              <div class="flex items-center gap-2 text-cyan-600 dark:text-cyan-400">
+              <div class="flex items-center gap-2 text-cyan-500 dark:text-cyan-400">
                 <span>${t.acceleration}:</span> <b class="font-mono">${p.acceleration_mps2 >= 0 ? '+' : ''}${p.acceleration_mps2.toFixed(2)} m/s²</b>
               </div>
               ` : ''}
-              <div class="flex items-center gap-2 ${p.delta_time_s >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+              <div class="flex items-center gap-2 ${p.delta_time_s >= 0 ? 'text-lime-500 dark:text-lime-400' : 'text-rose-500 dark:text-rose-400'}">
                 <span>${t.accumulatedDelta}</span> <b class="font-mono">${delta}</b>
               </div>
             </div>
@@ -241,11 +242,13 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
   }, [spatialPoints, isDark, t]);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-lg flex flex-col gap-2 transition-colors duration-200">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+    <div className="bg-white dark:bg-[#1c1c1f] border-2 border-zinc-900 dark:border-zinc-100 rounded-none p-5 shadow-brutal dark:shadow-brutal-dark flex flex-col gap-3 transition-colors duration-200">
+      <div className="flex items-center justify-between border-b-2 border-zinc-900 dark:border-zinc-100 pb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-amber-400 text-zinc-950 border-2 border-zinc-900 shadow-brutal-sm shrink-0">
+            <span className="block w-3.5 h-3.5 border-2 border-zinc-950 bg-amber-300 animate-pulse" />
+          </div>
+          <h3 className="text-sm font-mono font-black uppercase tracking-wider text-zinc-950 dark:text-zinc-50">
             {t.title}
           </h3>
           <Tooltip
@@ -255,7 +258,7 @@ export const TelemetryCharts: React.FC<TelemetryChartsProps> = ({
             position="bottom"
           />
         </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+        <span className="text-xs font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-2 border-zinc-900 dark:border-zinc-100 px-2.5 py-1 rounded-none shadow-brutal-sm">
           {spatialPoints.length} węzłów (krok 5m)
         </span>
       </div>

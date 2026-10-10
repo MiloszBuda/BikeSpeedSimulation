@@ -17,12 +17,15 @@ export default {
         },
         brutal: {
           yellow: '#facc15',
+          amber: '#fbbf24',
           orange: '#ff5400',
           lime: '#a3e635',
           cyan: '#06b6d4',
           pink: '#f43f5e',
           bgLight: '#f4f4f0',
-          bgDark: '#0a0a0c',
+          bgDark: '#121214',
+          surfaceLight: '#ffffff',
+          surfaceDark: '#1c1c1f',
           borderLight: '#18181b',
           borderDark: '#f4f4f5',
         }

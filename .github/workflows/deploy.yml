@@ -40,7 +40,7 @@ jobs:
         working-directory: ./frontend
         env:
           VITE_API_URL: https://bikespeedsimulation.onrender.com
-          VITE_CARTO_API_KEY: ${{ secrets.VITE_CARTO_API_KEY }}
+          VITE_CARTO_API_KEY: ${{ vars.VITE_CARTO_API_KEY || vars.CARTO_API_KEY || secrets.VITE_CARTO_API_KEY || secrets.CARTO_API_KEY }}
         run: npm run build
 
       - name: Setup GitHub Pages

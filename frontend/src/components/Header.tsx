@@ -38,18 +38,19 @@ export const Header: React.FC<HeaderProps> = ({
   t,
 }) => {
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
+    <header className="border-b border-emerald-500/30 bg-[#07090d]/85 backdrop-blur-2xl sticky top-0 z-40 transition-colors duration-200 shadow-[0_4px_25px_rgba(0,0,0,0.6)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl shadow-lg shadow-teal-500/20 text-white shrink-0">
-            <Bike className="w-6 h-6" />
+          <div className="p-2 bg-zinc-900 border border-emerald-500/60 rounded-none shadow-[0_0_12px_rgba(16,185,129,0.25)] text-emerald-400 shrink-0">
+            <Bike className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              AeroBike
+            <h1 className="text-base font-black font-mono text-white tracking-widest flex items-center gap-2 uppercase">
+              <span className="text-emerald-400 font-mono">STEALTH</span>//AERO
+              <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-mono tracking-widest">TACTICAL v2.5</span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-zinc-400 font-mono">
               {t.subtitle}
             </p>
           </div>

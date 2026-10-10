@@ -2,29 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbars */
+/* Tactical Stealth Background with Micro-Crosshair Grid */
+body {
+  background-color: #07090d;
+  background-image: 
+    radial-gradient(rgba(16, 185, 129, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, #07090d 0%, #0d1117 100%);
+  background-size: 24px 24px, 100% 100%;
+  background-attachment: fixed;
+}
+
+/* Custom scrollbars - Stealth Tactical */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #07090d;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: #10b981;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #34d399;
 }
 
-/* Fix Leaflet pane layering */
+/* Tactical Chamfer Card Clip Path */
+.chamfer-card {
+  clip-path: polygon(
+    0 10px,
+    10px 0,
+    100% 0,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    0 100%
+  );
+}
+
+/* Fix Leaflet pane layering - Sharp Tactical HUD */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  border-radius: 0.75rem;
+  border-radius: 0px;
   z-index: 10;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.15);
 }

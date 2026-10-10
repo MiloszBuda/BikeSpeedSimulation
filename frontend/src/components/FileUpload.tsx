@@ -53,10 +53,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`p-5 border-2 border-dashed rounded-xl cursor-pointer flex flex-col items-center justify-center gap-2 transition-all shadow-sm ${
-          isDragging
-            ? 'border-teal-500 bg-teal-50 dark:bg-teal-950/30'
-            : 'border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-900/80'
+        className={`p-6 border-2 border-dashed border-emerald-500/30 rounded-none cursor-pointer flex flex-col items-center justify-center gap-2 transition-all bg-[#0e1218] hover:border-emerald-400 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)] ${
+          isDragging ? 'bg-emerald-950/40 border-emerald-400' : ''
         }`}
       >
         <input

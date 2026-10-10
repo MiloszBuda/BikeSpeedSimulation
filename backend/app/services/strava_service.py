@@ -117,7 +117,7 @@ class StravaService:
     def get_auth_url(self, client_id: Optional[str] = None, redirect_uri: Optional[str] = None) -> str:
         """Construct Strava OAuth authorization URL."""
         cid = client_id or settings.STRAVA_CLIENT_ID
-        r_uri = (redirect_uri or settings.STRAVA_REDIRECT_URI).rstrip("/")
+        r_uri = redirect_uri or settings.STRAVA_REDIRECT_URI
         # activity:read_all is required to access private activities and detailed streams
         scope = "read,activity:read_all"
         params = {

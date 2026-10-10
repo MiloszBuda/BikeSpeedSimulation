@@ -80,7 +80,8 @@ export const StravaModal: React.FC<StravaModalProps> = ({
       if (clientSecret) {
         localStorage.setItem('strava_client_secret', clientSecret);
       }
-      const redirectUri = window.location.origin;
+      // Preserve current application pathname (crucial for GitHub Pages subpath e.g. /BikeSpeedSimulation/)
+      const redirectUri = `${window.location.origin}${window.location.pathname}`.replace(/\/$/, '') + '/';
       const { auth_url } = await getStravaAuthUrl(clientId || undefined, redirectUri);
       window.location.href = auth_url;
     } catch (err: any) {

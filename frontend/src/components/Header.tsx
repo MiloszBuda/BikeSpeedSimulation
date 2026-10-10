@@ -38,18 +38,19 @@ export const Header: React.FC<HeaderProps> = ({
   t,
 }) => {
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <header className="border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40 transition-colors duration-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl shadow-lg shadow-teal-500/20 text-white shrink-0">
-            <Bike className="w-6 h-6" />
+          <div className="p-2.5 bg-zinc-950 dark:bg-zinc-100 rounded-2xl shadow-swiss text-white dark:text-zinc-950 shrink-0">
+            <Bike className="w-5 h-5 stroke-[2.2]" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              AeroBike
+            <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-50 tracking-tight flex items-center gap-2">
+              <span>AeroBike</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium tracking-wide">Studio</span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-normal">
               {t.subtitle}
             </p>
           </div>
@@ -101,9 +102,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onLoadDemo}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 flex items-center gap-1.5 shadow-sm transition-colors"
+            className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-medium rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5 shadow-swiss transition-all"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             {t.loadDemo}
           </button>
 
@@ -112,9 +113,9 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenChungModal}
-              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/60 text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-colors"
+              className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 text-xs font-medium rounded-full flex items-center gap-1.5 shadow-swiss transition-all"
             >
-              <Award className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+              <Award className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
               {t.chungEstimation}
             </button>
           )}
@@ -123,10 +124,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenAutoCalibrationModal}
-            className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/80 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700/60 text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-colors"
+            className="px-3.5 py-1.5 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60 text-xs font-medium rounded-full flex items-center gap-1.5 shadow-swiss transition-all"
             title="Auto-kalibracja CdA, Crr, η z wielu jazd"
           >
-            <Gauge className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <Gauge className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>Auto-Kalibracja</span>
           </button>
 
@@ -134,17 +135,17 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenStravaModal}
-            className={`px-3 py-1.5 border text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-colors ${
+            className={`px-3.5 py-1.5 border text-xs font-medium rounded-full flex items-center gap-1.5 shadow-swiss transition-all ${
               isStravaConnected
-                ? 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/60 dark:hover:bg-orange-900/80 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700/60'
-                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                ? 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-900/60 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-800/60'
+                : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800'
             }`}
             title="Integracja ze Stravą i pobieranie strumieni"
           >
             <Bike className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
             <span>Strava</span>
             {isStravaConnected && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-0.5" />
             )}
           </button>
 

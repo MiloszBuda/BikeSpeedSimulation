@@ -7,6 +7,8 @@ import { SimulationControls, SimulationConfig } from './components/SimulationCon
 import { TelemetryCharts } from './components/TelemetryCharts';
 import { RouteMap } from './components/RouteMap';
 import { ChungAnalysisModal } from './components/ChungAnalysisModal';
+import { AutoCalibrationModal } from './components/AutoCalibrationModal';
+import { StravaModal } from './components/StravaModal';
 import {
   FitProcessResponse,
   WhatIfSimulationResponse,
@@ -17,6 +19,9 @@ import {
   processFitFile,
   runSimulation,
   estimateChungCdA,
+  getStravaAuthStatus,
+  exchangeStravaToken,
+  getLatestCalibration,
 } from './services/api';
 import {
   demoProcessResponse,
@@ -123,6 +128,10 @@ export const App: React.FC = () => {
   const [simulationData, setSimulationData] = useState<WhatIfSimulationResponse>(demoSimulationResponse);
   const [chungData, setChungData] = useState<ChungEstimateResponse | null>(demoChungResponse);
   const [isChungModalOpen, setIsChungModalOpen] = useState<boolean>(false);
+  const [isAutoCalibrationModalOpen, setIsAutoCalibrationModalOpen] = useState<boolean>(false);
+  const [isStravaModalOpen, setIsStravaModalOpen] = useState<boolean>(false);
+  const [isStravaConnected, setIsStravaConnected] = useState<boolean>(false);
+  const [calibrationBadge, setCalibrationBadge] = useState<string | null>(null);
 
   // Hover sync state
   const [hoveredSpatialIndex, setHoveredSpatialIndex] = useState<number | null>(null);
@@ -204,6 +213,77 @@ export const App: React.FC = () => {
       if (retryTimer) clearTimeout(retryTimer);
       clearInterval(interval);
     };
+  }, []);
+
+  // Check for Strava OAuth code in URL on mount and load latest calibration
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const stravaCode = urlParams.get('code');
+    if (stravaCode) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      const storedCid = localStorage.getItem('strava_client_id') || undefined;
+      const storedSec = localStorage.getItem('strava_client_secret') || undefined;
+      exchangeStravaToken(stravaCode, storedCid, storedSec)
+        .then(() => {
+          setIsStravaConnected(true);
+          setIsStravaModalOpen(true);
+        })
+        .catch((err) => console.error('Strava token exchange error:', err));
+    } else {
+      getStravaAuthStatus()
+        .then((st) => setIsStravaConnected(st.connected))
+        .catch(() => setIsStravaConnected(false));
+    }
+
+    getLatestCalibration()
+      .then((res) => {
+        if (res.calibrated && res.result) {
+          setCalibrationBadge(res.result.badge_text);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Calibration handlers
+  const handleApplyCalibration = useCallback((res: { cda: number; crr: number; eta: number; massKg: number; badgeText: string }) => {
+    setConfig((prev) => ({
+      ...prev,
+      cda: res.cda,
+      crr: res.crr,
+      eta: res.eta,
+      massKg: res.massKg,
+    }));
+    saveAdvancedParams({
+      cda: res.cda,
+      crr: res.crr,
+      eta: res.eta,
+      massKg: res.massKg,
+    });
+    setCalibrationBadge(res.badgeText);
+  }, []);
+
+  const handleResetCalibrationBadge = useCallback(() => {
+    setCalibrationBadge(null);
+    handleResetAdvancedDefaults();
+  }, [handleResetAdvancedDefaults]);
+
+  // Strava activity selection for simulation
+  const handleSelectStravaActivityForSimulation = useCallback((data: FitProcessResponse, name: string) => {
+    setActiveFile(null);
+    setFileName(name);
+    setProcessData(data);
+    setSimulationData(createBaselineSimulationResponse(data));
+    const baseSpeed = data.weather_summary.avg_wind_speed_cyclist_mps;
+    const baseDir = data.weather_summary.dominant_wind_dir_deg;
+    setConfig((prev) => ({
+      ...prev,
+      zeroWind: false,
+      windSpeedMps: baseSpeed,
+      windScale: 1.0,
+      windDirDeg: baseDir,
+      reverseRoute: false,
+      pacingMode: 'original',
+    }));
   }, []);
 
   // Handle FIT file upload
@@ -443,6 +523,9 @@ export const App: React.FC = () => {
         onRetryBackend={handleRetryBackend}
         onLoadDemo={handleLoadDemo}
         onOpenChungModal={() => setIsChungModalOpen(true)}
+        onOpenAutoCalibrationModal={() => setIsAutoCalibrationModalOpen(true)}
+        onOpenStravaModal={() => setIsStravaModalOpen(true)}
+        isStravaConnected={isStravaConnected}
         hasData={Boolean(processData)}
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -517,6 +600,8 @@ export const App: React.FC = () => {
               weatherProvider={processData.weather_summary.weather_provider}
               isWeatherFallback={processData.weather_summary.is_fallback}
               weatherFallbackReason={processData.weather_summary.fallback_reason}
+              calibrationBadge={calibrationBadge}
+              onResetCalibrationBadge={handleResetCalibrationBadge}
               t={t.controls}
               tCompass={t.compass}
             />
@@ -558,6 +643,28 @@ export const App: React.FC = () => {
         }}
         theme={theme}
         t={t.chung}
+      />
+
+      {/* Multi-Activity Auto-Calibration Modal */}
+      <AutoCalibrationModal
+        isOpen={isAutoCalibrationModalOpen}
+        onClose={() => setIsAutoCalibrationModalOpen(false)}
+        onApplyCalibration={handleApplyCalibration}
+        initialMassKg={config.massKg}
+        initialCda={config.cda}
+        initialCrr={config.crr}
+        initialEta={config.eta}
+        onOpenStravaConnect={() => {
+          setIsAutoCalibrationModalOpen(false);
+          setIsStravaModalOpen(true);
+        }}
+      />
+
+      {/* Strava Integration & Streams Modal */}
+      <StravaModal
+        isOpen={isStravaModalOpen}
+        onClose={() => setIsStravaModalOpen(false)}
+        onSelectActivityForSimulation={handleSelectStravaActivityForSimulation}
       />
 
       {/* Footer */}

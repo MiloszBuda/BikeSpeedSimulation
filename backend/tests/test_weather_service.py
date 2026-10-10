@@ -189,12 +189,17 @@ async def test_get_weather_for_track_429_triggers_met_norway_fallback():
     # Bright Sky returns 500
     respx.get("https://api.brightsky.dev/weather").respond(status_code=500, text="Internal Server Error")
 
+    today_dt = datetime.now(timezone.utc)
+    today_str = today_dt.date().isoformat()
+    t1_iso = today_dt.replace(hour=10, minute=0, second=0, microsecond=0).isoformat()
+    t2_iso = today_dt.replace(hour=11, minute=0, second=0, microsecond=0).isoformat()
+
     # MET Norway returns valid timeseries
     met_payload = {
         "properties": {
             "timeseries": [
                 {
-                    "time": "2026-09-13T10:00:00Z",
+                    "time": t1_iso,
                     "data": {
                         "instant": {
                             "details": {
@@ -208,7 +213,7 @@ async def test_get_weather_for_track_429_triggers_met_norway_fallback():
                     },
                 },
                 {
-                    "time": "2026-09-13T11:00:00Z",
+                    "time": t2_iso,
                     "data": {
                         "instant": {
                             "details": {
@@ -227,15 +232,15 @@ async def test_get_weather_for_track_429_triggers_met_norway_fallback():
     respx.get("https://api.met.no/weatherapi/locationforecast/2.0/compact").respond(status_code=200, json=met_payload)
 
     target_times = [
-        datetime(2026, 9, 13, 10, 0, 0, tzinfo=timezone.utc),
+        today_dt.replace(hour=10, minute=0, second=0, microsecond=0),
     ]
 
     async with httpx.AsyncClient() as client:
         points, summary = await service.get_weather_for_track(
             lat=50.15,
             lon=21.82,
-            start_date="2026-09-13",
-            end_date="2026-09-13",
+            start_date=today_str,
+            end_date=today_str,
             target_timestamps=target_times,
             avg_elevation_m=200.0,
             temp_c_hint=16.0,

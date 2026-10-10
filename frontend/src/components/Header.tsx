@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bike, Award, Sparkles, Loader2, RefreshCw, ShieldAlert, Sun, Moon, Globe } from 'lucide-react';
+import { Bike, Award, Sparkles, Loader2, RefreshCw, ShieldAlert, Sun, Moon, Globe, Gauge } from 'lucide-react';
 import { Language, Translations } from '../i18n/translations';
 
 interface HeaderProps {
@@ -9,6 +9,9 @@ interface HeaderProps {
   onRetryBackend?: () => void;
   onLoadDemo: () => void;
   onOpenChungModal: () => void;
+  onOpenAutoCalibrationModal: () => void;
+  onOpenStravaModal: () => void;
+  isStravaConnected?: boolean;
   hasData: boolean;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
@@ -24,6 +27,9 @@ export const Header: React.FC<HeaderProps> = ({
   onRetryBackend,
   onLoadDemo,
   onOpenChungModal,
+  onOpenAutoCalibrationModal,
+  onOpenStravaModal,
+  isStravaConnected = false,
   hasData,
   theme,
   onToggleTheme,
@@ -112,6 +118,35 @@ export const Header: React.FC<HeaderProps> = ({
               {t.chungEstimation}
             </button>
           )}
+
+          {/* Auto-Calibration Button */}
+          <button
+            type="button"
+            onClick={onOpenAutoCalibrationModal}
+            className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/80 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700/60 text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-colors"
+            title="Auto-kalibracja CdA, Crr, η z wielu jazd"
+          >
+            <Gauge className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <span>Auto-Kalibracja</span>
+          </button>
+
+          {/* Strava Integration Button */}
+          <button
+            type="button"
+            onClick={onOpenStravaModal}
+            className={`px-3 py-1.5 border text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-colors ${
+              isStravaConnected
+                ? 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/60 dark:hover:bg-orange-900/80 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700/60'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+            }`}
+            title="Integracja ze Stravą i pobieranie strumieni"
+          >
+            <Bike className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+            <span>Strava</span>
+            {isStravaConnected && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+            )}
+          </button>
 
           {/* Language Switcher (PL / EN) */}
           <button

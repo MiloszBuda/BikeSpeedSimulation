@@ -40,6 +40,8 @@ interface SimulationControlsProps {
   weatherProvider?: string;
   isWeatherFallback?: boolean;
   weatherFallbackReason?: string | null;
+  calibrationBadge?: string | null;
+  onResetCalibrationBadge?: () => void;
   t: Translations['controls'];
   tCompass: Translations['compass'];
 }
@@ -56,6 +58,8 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   weatherProvider = 'Open-Meteo',
   isWeatherFallback = false,
   weatherFallbackReason = null,
+  calibrationBadge = null,
+  onResetCalibrationBadge,
   t,
   tCompass,
 }) => {
@@ -334,16 +338,37 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
 
       {/* Collapsible Advanced Cyclist Physics */}
       <div className="border-t border-slate-200 dark:border-slate-800 pt-2">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 flex items-center gap-1.5 py-1 transition-colors"
-          >
-            <Activity className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-            <span>{t.advancedTitle} ({t.advancedSubtitle})</span>
-            {showAdvanced ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
-          </button>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 flex items-center gap-1.5 py-1 transition-colors"
+            >
+              <Activity className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+              <span>{t.advancedTitle} ({t.advancedSubtitle})</span>
+              {showAdvanced ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+            </button>
+
+            {calibrationBadge && (
+              <span
+                className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-mono font-semibold flex items-center gap-1 shadow-sm"
+                title="Wartości wyznaczone z bilansu energii (auto-kalibracja)"
+              >
+                <span>{calibrationBadge}</span>
+                {onResetCalibrationBadge && (
+                  <button
+                    type="button"
+                    onClick={onResetCalibrationBadge}
+                    className="ml-1 text-emerald-600 dark:text-emerald-400 hover:text-rose-500 font-bold"
+                    title="Przywróć domyślne parametry"
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
           {showAdvanced && onResetAdvancedDefaults && (
             <button
               type="button"

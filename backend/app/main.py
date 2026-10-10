@@ -5,6 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.endpoints import router as api_router
+from app.api.calibration_endpoints import router as calibration_router
+from app.api.strava_endpoints import router as strava_router
 from app.config import settings
 
 logging.basicConfig(
@@ -15,7 +17,7 @@ logging.basicConfig(
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Backend API for bike aerodynamic speed simulation, FIT parsing, and weather integration.",
+    description="Backend API for bike aerodynamic speed simulation, FIT parsing, weather integration, and Strava calibration.",
 )
 
 # CORS middleware for GitHub Pages and local frontend development
@@ -29,6 +31,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(api_router, prefix=settings.API_PREFIX)
+app.include_router(calibration_router, prefix=settings.API_PREFIX)
+app.include_router(strava_router, prefix=settings.API_PREFIX)
 app.include_router(api_router)  # Also expose /health at root level
 
 

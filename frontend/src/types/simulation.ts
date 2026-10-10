@@ -116,3 +116,87 @@ export interface ChungEstimateResponse {
   real_elevation_m: number[];
   time_offset_s: number[];
 }
+
+export interface ActivityCalibrationMeta {
+  activity_id: string;
+  name?: string;
+  date?: string;
+  distance_km: number;
+  duration_min: number;
+  avg_power_w: number;
+  avg_speed_kmh: number;
+  windows_count: number;
+  loo_speed_rmse_kmh?: number | null;
+  loo_time_error_s?: number | null;
+  loo_time_error_pct?: number | null;
+}
+
+export interface CalibrationResponse {
+  cda: number;
+  crr: number;
+  eta: number;
+  cda_std: number;
+  crr_std: number;
+  eta_std: number;
+  mass_kg: number;
+  n_activities: number;
+  total_windows: number;
+  gear_id?: string | null;
+  eta_fixed: boolean;
+  eta_reason?: string | null;
+  condition_number: number;
+  validation_mean_rmse_kmh?: number | null;
+  validation_mean_time_error_pct?: number | null;
+  activities: ActivityCalibrationMeta[];
+  diagnostics: string[];
+  badge_text: string;
+}
+
+export interface StravaAthlete {
+  id: number;
+  username?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  profile?: string | null;
+  city?: string | null;
+  country?: string | null;
+}
+
+export interface StravaAuthStatusResponse {
+  connected: boolean;
+  athlete?: StravaAthlete | null;
+  scopes: string[];
+  expires_at?: number | null;
+  has_credentials: boolean;
+}
+
+export interface StravaActivityMeta {
+  id: number;
+  name: string;
+  distance_m: number;
+  moving_time_s: number;
+  elapsed_time_s: number;
+  total_elevation_gain_m: number;
+  type: string;
+  sport_type: string;
+  start_date: string;
+  start_date_local: string;
+  timezone?: string | null;
+  trainer: boolean;
+  device_watts: boolean;
+  gear_id?: string | null;
+  gear_name?: string | null;
+  average_speed_mps: number;
+  max_speed_mps: number;
+  average_watts?: number | null;
+  weighted_average_watts?: number | null;
+  has_streams: boolean;
+  is_outdoor_with_power: boolean;
+}
+
+export interface StravaActivitiesResponse {
+  activities: StravaActivityMeta[];
+  total: number;
+  page: number;
+  per_page: number;
+}

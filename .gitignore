@@ -222,4 +222,12 @@ node_modules/
 dist/
 .vite/
 
+# Local databases and athlete data
+backend/data/
+*.sqlite
+*.sqlite3
+*.db
+.env
+.env.local
+
 GEMINI.MD

@@ -1,5 +1,7 @@
 """Application configuration and physical constants."""
 
+import os
+
 
 class Settings:
     # Service metadata
@@ -35,6 +37,22 @@ class Settings:
     DEFAULT_ETA: float = 0.97  # mechanical drivetrain efficiency (97%)
     DEFAULT_CRR: float = 0.004  # coefficient of rolling resistance (road tires)
     DEFAULT_CDA: float = 0.32  # drag area (m^2)
+
+    # Strava API & OAuth
+    STRAVA_CLIENT_ID: str = os.getenv("STRAVA_CLIENT_ID", "")
+    STRAVA_CLIENT_SECRET: str = os.getenv("STRAVA_CLIENT_SECRET", "")
+    STRAVA_REDIRECT_URI: str = os.getenv("STRAVA_REDIRECT_URI", "http://localhost:5173/strava/callback")
+    STRAVA_AUTH_URL: str = "https://www.strava.com/oauth/authorize"
+    STRAVA_TOKEN_URL: str = "https://www.strava.com/oauth/token"
+    STRAVA_API_BASE: str = "https://www.strava.com/api/v3"
+    STRAVA_DB_PATH: str = os.getenv("STRAVA_DB_PATH", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "strava.db"))
+
+    # Auto-Calibration Settings
+    DEFAULT_CALIBRATION_WINDOW_S: int = 300  # 5 minutes per energy window
+    MIN_CALIBRATION_WINDOWS: int = 3
+    CALIBRATION_ETA_BOUNDS: tuple = (0.92, 0.995)
+    CALIBRATION_CDA_BOUNDS: tuple = (0.18, 0.55)
+    CALIBRATION_CRR_BOUNDS: tuple = (0.002, 0.010)
 
 
 settings = Settings()

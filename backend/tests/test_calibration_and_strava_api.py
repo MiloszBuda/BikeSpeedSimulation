@@ -82,7 +82,7 @@ def test_strava_auth_url_endpoint():
     assert resp.status_code == 200
     data = resp.json()
     assert "client_id=98765" in data["auth_url"]
-    assert "activity:read_all" in data["auth_url"]
+    assert "activity%3Aread_all" in data["auth_url"]
 
 
 def test_strava_status_and_disconnect():

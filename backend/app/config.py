@@ -41,7 +41,7 @@ class Settings:
     # Strava API & OAuth
     STRAVA_CLIENT_ID: str = os.getenv("STRAVA_CLIENT_ID", "")
     STRAVA_CLIENT_SECRET: str = os.getenv("STRAVA_CLIENT_SECRET", "")
-    STRAVA_REDIRECT_URI: str = os.getenv("STRAVA_REDIRECT_URI", "http://localhost:5173/strava/callback")
+    STRAVA_REDIRECT_URI: str = os.getenv("STRAVA_REDIRECT_URI", "http://localhost:5173")
     STRAVA_AUTH_URL: str = "https://www.strava.com/oauth/authorize"
     STRAVA_TOKEN_URL: str = "https://www.strava.com/oauth/token"
     STRAVA_API_BASE: str = "https://www.strava.com/api/v3"

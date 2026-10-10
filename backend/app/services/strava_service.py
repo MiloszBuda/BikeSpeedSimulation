@@ -7,6 +7,7 @@ import os
 import sqlite3
 import time
 from typing import Any, Dict, List, Optional, Tuple
+import urllib.parse
 import httpx
 
 from app.config import settings
@@ -116,14 +117,17 @@ class StravaService:
     def get_auth_url(self, client_id: Optional[str] = None, redirect_uri: Optional[str] = None) -> str:
         """Construct Strava OAuth authorization URL."""
         cid = client_id or settings.STRAVA_CLIENT_ID
-        r_uri = redirect_uri or settings.STRAVA_REDIRECT_URI
+        r_uri = (redirect_uri or settings.STRAVA_REDIRECT_URI).rstrip("/")
         # activity:read_all is required to access private activities and detailed streams
         scope = "read,activity:read_all"
-        return (
-            f"{settings.STRAVA_AUTH_URL}?"
-            f"client_id={cid}&response_type=code&redirect_uri={r_uri}&"
-            f"approval_prompt=auto&scope={scope}"
-        )
+        params = {
+            "client_id": cid,
+            "response_type": "code",
+            "redirect_uri": r_uri,
+            "approval_prompt": "auto",
+            "scope": scope,
+        }
+        return f"{settings.STRAVA_AUTH_URL}?{urllib.parse.urlencode(params)}"
 
     async def exchange_code_for_token(
         self,

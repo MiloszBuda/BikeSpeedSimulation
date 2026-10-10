@@ -66,10 +66,11 @@ async def test_strava_service_auth_and_caching(tmp_path):
     status = service.get_auth_status()
     assert status.connected is False
 
-    # Test auth URL generation
-    auth_url = service.get_auth_url(client_id="12345", redirect_uri="http://localhost:5173/strava/callback")
+    # Test auth URL generation (properly URL encoded, trailing slash stripped)
+    auth_url = service.get_auth_url(client_id="12345", redirect_uri="http://localhost:5173/")
     assert "client_id=12345" in auth_url
-    assert "activity:read_all" in auth_url
+    assert "redirect_uri=http%3A%2F%2Flocalhost%3A5173" in auth_url
+    assert "scope=read%2Cactivity%3Aread_all" in auth_url
 
     # Mock token exchange
     token_payload = {

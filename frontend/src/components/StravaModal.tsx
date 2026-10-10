@@ -80,7 +80,7 @@ export const StravaModal: React.FC<StravaModalProps> = ({
       if (clientSecret) {
         localStorage.setItem('strava_client_secret', clientSecret);
       }
-      const redirectUri = `${window.location.origin}${window.location.pathname}`;
+      const redirectUri = window.location.origin;
       const { auth_url } = await getStravaAuthUrl(clientId || undefined, redirectUri);
       window.location.href = auth_url;
     } catch (err: any) {
@@ -249,11 +249,13 @@ export const StravaModal: React.FC<StravaModalProps> = ({
                 >
                   strava.com/settings/api <ExternalLink className="w-3 h-3" />
                 </a>
-                . Jako <strong>Authorization Callback Domain</strong> wpisz domenę bieżącą (np.{' '}
-                <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">
+                . W panelu Stravy w polu <strong>Authorization Callback Domain</strong> wpisz dokładnie:{' '}
+                <code className="bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300 font-bold px-1.5 py-0.5 rounded font-mono">
                   {window.location.hostname}
-                </code>
-                ).
+                </code>{' '}
+                <span className="text-slate-500 dark:text-slate-400 font-normal">
+                  (samą nazwę domeny bez portu i protokołu — np. wpisz <code className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">localhost</code>, NIE wpisuj <code className="font-mono line-through text-rose-500">localhost:5173</code>).
+                </span>
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">

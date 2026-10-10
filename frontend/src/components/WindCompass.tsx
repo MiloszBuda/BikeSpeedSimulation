@@ -246,7 +246,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
       </div>
 
       {/* Quick Action Angle Buttons */}
-      <div className="grid grid-cols-3 gap-1.5 w-full mt-3">
+      <div className="grid grid-cols-3 gap-1.5 max-w-[240px] w-full mx-auto mt-3">
         <button
           type="button"
           disabled={disabled}
@@ -282,7 +282,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
       </div>
 
       {/* Preset Cardinal Buttons */}
-      <div className="grid grid-cols-4 gap-1.5 w-full mt-2">
+      <div className="grid grid-cols-4 gap-1.5 max-w-[240px] w-full mx-auto mt-2">
         {[
           { label: 'N', deg: 0, text: '0°' },
           { label: 'E', deg: 90, text: '90°' },

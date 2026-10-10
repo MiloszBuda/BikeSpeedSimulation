@@ -165,7 +165,7 @@ export interface Translations {
 export const translations: Record<Language, Translations> = {
   pl: {
     header: {
-      subtitle: 'Szacowanie prędkości roweru od wiatru & Metoda Chunga (VE)',
+      subtitle: 'Symulacja prędkości od wiatru & Metoda Chunga (VE)',
       backendConnecting: 'Łączenie z Renderem...',
       backendOnline: 'Render Online',
       backendBlocked: 'Zablokowane przez Adblock',

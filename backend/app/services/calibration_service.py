@@ -178,8 +178,8 @@ class CalibrationService:
         windows: List[EnergyWindow],
         mass_kg: float,
         prior_eta: float = 0.97,
-        prior_cda: float = 0.32,
-        prior_crr: float = 0.004,
+        prior_cda: float = 0.34,
+        prior_crr: float = 0.0042,
         fixed_eta: Optional[float] = None,
     ) -> Tuple[float, float, float, float, float, float, float, bool, Optional[str]]:
         """
@@ -208,38 +208,41 @@ class CalibrationService:
 
         # Identifiability check for drivetrain efficiency eta:
         # eta is identifiable primarily from climb gravity work vs power.
-        # If total climb variation is tiny (< 35m across windows or std of delta_h < 1.0m),
+        # If total climb variation is tiny (< 80m across windows or std of delta_h < 4.0m or max climb < 15m),
         # eta is collinear with powermeter gain / flat rolling.
         delta_h_vals = np.array([w.delta_h_m for w in windows])
         climb_variation = float(np.std(delta_h_vals))
         total_abs_climb = float(np.sum(np.abs(delta_h_vals)))
+        max_climb = float(np.max(delta_h_vals)) if len(delta_h_vals) > 0 else 0.0
 
         eta_is_fixed = False
         eta_reason = None
         if fixed_eta is not None:
             eta_is_fixed = True
             eta_val = float(fixed_eta)
-            eta_reason = f"Wymuszono eta={eta_val:.3f} na życzenie użytkownika"
-        elif climb_variation < 1.2 or total_abs_climb < 35.0:
+            eta_reason = f"Wymuszono η={eta_val:.3f} na życzenie użytkownika"
+        elif climb_variation < 4.0 or total_abs_climb < 80.0 or max_climb < 15.0:
             eta_is_fixed = True
             eta_val = prior_eta
-            eta_reason = "Zbyt mało zróżnicowanych podjazdów do pewnego wyznaczenia sprawności η (użyto domyślnego 0.97)"
+            eta_reason = f"Zbyt mało zróżnicowanych podjazdów do pewnego wyznaczenia sprawności η (użyto domyślnego η={prior_eta:.3f})"
 
         # Physical bounds
         lb = np.array([settings.CALIBRATION_ETA_BOUNDS[0], settings.CALIBRATION_CDA_BOUNDS[0], settings.CALIBRATION_CRR_BOUNDS[0]])
         ub = np.array([settings.CALIBRATION_ETA_BOUNDS[1], settings.CALIBRATION_CDA_BOUNDS[1], settings.CALIBRATION_CRR_BOUNDS[1]])
 
-        # Prior and regularization:
-        # Scale regularization weights so that prior doesn't dominate large datasets,
-        # but anchors the solution when speed variation is narrow.
+        # Prior and Bayesian regularization:
+        # Prevent rolling resistance from blowing up to unnatural boundaries and robbing aerodynamic drag.
         prior_x = np.array([prior_eta, prior_cda, prior_crr], dtype=np.float64)
-        # Prior uncertainties: eta: +/- 0.015, CdA: +/- 0.04, Crr: +/- 0.0012
-        sigma_priors = np.array([0.015, 0.040, 0.0012], dtype=np.float64)
+        sigma_priors = np.array([0.008, 0.035, 0.0006], dtype=np.float64)
 
-        # Scale regularization with data magnitude
-        rms_y = max(1000.0, float(np.sqrt(np.mean(y**2))))
-        reg_factor = rms_y * 0.015  # 1.5% regularization penalty on prior deviations
-        reg_weights = reg_factor / sigma_priors
+        # Column scales (root mean square of each column in A)
+        col_scales = np.sqrt(np.mean(A**2, axis=0))
+        col_scales = np.maximum(col_scales, 1.0)
+
+        # Scale regularization weights so each prior acts as ~2.5 pseudo-observations
+        n_pseudo = 2.5
+        reg_weights = n_pseudo * (col_scales * (sigma_priors / prior_x))
+        reg_weights = np.maximum(reg_weights, 100.0)
 
         if eta_is_fixed:
             # 2-parameter optimization for [CdA, Crr]

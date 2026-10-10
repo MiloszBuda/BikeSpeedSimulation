@@ -50,9 +50,9 @@ class Settings:
     # Auto-Calibration Settings
     DEFAULT_CALIBRATION_WINDOW_S: int = 300  # 5 minutes per energy window
     MIN_CALIBRATION_WINDOWS: int = 3
-    CALIBRATION_ETA_BOUNDS: tuple = (0.92, 0.995)
-    CALIBRATION_CDA_BOUNDS: tuple = (0.18, 0.55)
-    CALIBRATION_CRR_BOUNDS: tuple = (0.002, 0.010)
+    CALIBRATION_ETA_BOUNDS: tuple = (0.94, 0.985)
+    CALIBRATION_CDA_BOUNDS: tuple = (0.20, 0.55)
+    CALIBRATION_CRR_BOUNDS: tuple = (0.0028, 0.0065)
 
 
 settings = Settings()

@@ -383,9 +383,9 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
 
         {showAdvanced && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 p-3 bg-slate-50 dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.massTitle}</label>
+            <div className="flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 mb-1.5 min-h-[32px] sm:min-h-[36px]">
+                <label className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-tight">{t.massTitle}</label>
                 <Tooltip
                   title={t.massTooltipTitle}
                   content={t.massTooltipContent}
@@ -399,12 +399,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 max="200"
                 value={config.massKg}
                 onChange={(e) => update({ massKg: parseFloat(e.target.value) || 78 })}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-teal-500 shadow-sm"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 h-8 text-xs text-slate-900 dark:text-slate-100 font-mono text-center focus:outline-none focus:border-teal-500 shadow-sm"
               />
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.cdaTitle}</label>
+            <div className="flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 mb-1.5 min-h-[32px] sm:min-h-[36px]">
+                <label className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-tight">{t.cdaTitle}</label>
                 <Tooltip
                   title={t.cdaTooltipTitle}
                   content={t.cdaTooltipContent}
@@ -418,12 +418,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 max="0.9"
                 value={config.cda}
                 onChange={(e) => update({ cda: parseFloat(e.target.value) || 0.32 })}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-teal-500 shadow-sm"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 h-8 text-xs text-slate-900 dark:text-slate-100 font-mono text-center focus:outline-none focus:border-teal-500 shadow-sm"
               />
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.crrTitle}</label>
+            <div className="flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 mb-1.5 min-h-[32px] sm:min-h-[36px]">
+                <label className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-tight">{t.crrTitle}</label>
                 <Tooltip
                   title={t.crrTooltipTitle}
                   content={t.crrTooltipContent}
@@ -437,12 +437,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 max="0.02"
                 value={config.crr}
                 onChange={(e) => update({ crr: parseFloat(e.target.value) || 0.004 })}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-teal-500 shadow-sm"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 h-8 text-xs text-slate-900 dark:text-slate-100 font-mono text-center focus:outline-none focus:border-teal-500 shadow-sm"
               />
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-slate-600 dark:text-slate-400 block">{t.drivetrainLossTitle}</label>
+            <div className="flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 mb-1.5 min-h-[32px] sm:min-h-[36px]">
+                <label className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-tight">{t.drivetrainLossTitle}</label>
                 <Tooltip
                   title={t.etaTooltipTitle}
                   content={t.etaTooltipContent}
@@ -456,7 +456,7 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 max="1.0"
                 value={config.eta}
                 onChange={(e) => update({ eta: parseFloat(e.target.value) || 0.97 })}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-teal-500 shadow-sm"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 h-8 text-xs text-slate-900 dark:text-slate-100 font-mono text-center focus:outline-none focus:border-teal-500 shadow-sm"
               />
             </div>
           </div>

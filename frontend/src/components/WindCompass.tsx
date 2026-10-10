@@ -92,9 +92,9 @@ export const WindCompass: React.FC<WindCompassProps> = ({
   const sourceCardinal = getCardinal(angle);
   const flowCardinal = getCardinal(flowAngle);
 
-  const size = 180;
+  const size = 200;
   const center = size / 2;
-  const radius = 70;
+  const radius = 80;
 
   const titleText = t?.title || 'Kierunek wiatru';
   const flowText = t?.flowDirection || 'Przepływ';
@@ -102,9 +102,9 @@ export const WindCompass: React.FC<WindCompassProps> = ({
   const dragText = t?.dragOrClick || 'Przeciągnij / Kliknij';
 
   return (
-    <div className="flex flex-col items-center select-none w-full">
+    <div className="flex flex-col items-center justify-between select-none w-full h-full">
       {/* Row 1: Title and Tooltip */}
-      <div className="flex items-center justify-between w-full mb-2">
+      <div className="flex items-center justify-between w-full mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <Compass className="w-4 h-4 text-zinc-950 dark:text-zinc-50 shrink-0 stroke-[2.5]" />
           <span className="text-xs font-mono font-bold uppercase tracking-wide text-zinc-950 dark:text-zinc-50">
@@ -126,7 +126,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
       </div>
 
       {/* Row 2: Angle and Cardinal Direction Banner */}
-      <div className="w-full flex items-center justify-between bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-100 px-3 py-1.5 mb-2.5 rounded-none font-mono text-xs shadow-brutal-sm dark:shadow-brutal-sm-dark">
+      <div className="w-full flex items-center justify-between bg-white dark:bg-zinc-900 border-2 border-zinc-900 dark:border-zinc-100 px-3 py-1.5 mb-2 rounded-none font-mono text-xs shadow-brutal-sm dark:shadow-brutal-sm-dark">
         <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-black">
           <span>➔ {flowCardinal.label}</span>
           <span>({flowAngle}°)</span>
@@ -137,7 +137,7 @@ export const WindCompass: React.FC<WindCompassProps> = ({
       </div>
 
       {/* SVG Interactive Compass Dial */}
-      <div className="relative group cursor-grab active:cursor-grabbing">
+      <div className="relative group cursor-grab active:cursor-grabbing my-auto py-1 flex items-center justify-center">
         <svg
           ref={svgRef}
           width={size}

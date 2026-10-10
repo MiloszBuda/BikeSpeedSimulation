@@ -48,7 +48,6 @@ export const Header: React.FC<HeaderProps> = ({
           <div>
             <h1 className="text-lg font-black font-mono text-zinc-950 dark:text-zinc-50 tracking-wider flex items-center gap-2 uppercase">
               <span>AeroBike</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-none border border-zinc-900 dark:border-zinc-100 bg-black dark:bg-white text-white dark:text-black font-mono font-bold">GRID_01</span>
             </h1>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono">
               {t.subtitle}

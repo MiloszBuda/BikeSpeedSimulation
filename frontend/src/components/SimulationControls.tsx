@@ -138,9 +138,9 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
       )}
 
       {/* Main Two-Column Controls Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
         {/* Left Column: Interactive Compass */}
-        <div className="flex flex-col items-center justify-center p-3 bg-zinc-50 dark:bg-[#121214] rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm dark:shadow-brutal-sm-dark min-w-0">
+        <div className="flex flex-col p-4 bg-zinc-50 dark:bg-[#121214] rounded-none border-2 border-zinc-900 dark:border-zinc-100 shadow-brutal-sm dark:shadow-brutal-sm-dark min-w-0 h-full">
           <WindCompass
             angle={config.windDirDeg}
             onChange={(angle) => update({ windDirDeg: angle })}

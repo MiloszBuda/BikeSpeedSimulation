@@ -2,29 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbars */
+/* Custom scrollbars - Cyber Neon */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #05070e;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: #0e7490;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #06b6d4;
 }
 
-/* Fix Leaflet pane layering */
+/* Cyberpunk Telemetry Grid Background */
+body {
+  background-color: #05070e;
+  background-image: 
+    radial-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(5, 7, 14, 0.95), rgba(9, 14, 26, 0.98));
+  background-size: 28px 28px, 100% 100%;
+  background-attachment: fixed;
+}
+
+/* Fix Leaflet pane layering & tech HUD border */
 .leaflet-container {
   width: 100%;
   height: 100%;
   border-radius: 0.75rem;
   z-index: 10;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 15px -3px rgba(0, 240, 255, 0.15);
 }

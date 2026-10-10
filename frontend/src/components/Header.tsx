@@ -38,18 +38,19 @@ export const Header: React.FC<HeaderProps> = ({
   t,
 }) => {
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
+    <header className="border-b border-cyan-500/20 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl shadow-lg shadow-teal-500/20 text-white shrink-0">
-            <Bike className="w-6 h-6" />
+          <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-neon-cyan text-slate-950 font-black shrink-0 border border-cyan-300">
+            <Bike className="w-6 h-6 stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              AeroBike
+            <h1 className="text-lg font-black text-white tracking-wider flex items-center gap-2 font-mono">
+              <span className="text-cyan-400">AERO</span>BIKE
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono tracking-widest uppercase">HUD v2.4</span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-cyan-500/70 font-mono">
               {t.subtitle}
             </p>
           </div>

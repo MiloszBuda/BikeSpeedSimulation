@@ -17,8 +17,9 @@ Aplikacja integruje dane telemetryczne z plików aktywności FIT (moc, prędkoś
 7. Auto-kalibracja parametrów fizycznych (CdA, Crr, η) z wielu aktywności
 8. Bezpośrednia integracja ze Strava API
 9. Interfejs użytkownika i moduł wizualizacji
-10. Struktura repozytorium
-11. Uruchomienie lokalne i testy
+10. Technologie, frameworki i biblioteki (Tech Stack)
+11. Struktura repozytorium
+12. Uruchomienie lokalne i testy
 
 ---
 
@@ -413,7 +414,55 @@ Frontend zbudowano w oparciu o **React 18**, **TypeScript**, **Tailwind CSS** or
 
 ---
 
-## 10. Struktura repozytorium
+## 10. Technologie, frameworki i biblioteki (Tech Stack)
+
+Aplikacja została zaprojektowana w nowoczesnej architekturze zorientowanej na wysoką wydajność numeryczną (Python / C / Rust) po stronie serwera oraz płynną, reaktywną wizualizację wielotysięcznych serii czasowych telemetrii (TypeScript / React) po stronie klienta.
+
+### 10.1. Backend & Obliczenia Numeryczne (Python)
+
+| Technologia / Biblioteka | Wersja | Rola w architekturze i kluczowe zastosowanie |
+| :--- | :--- | :--- |
+| **Python** | `>= 3.12` | Podstawa całego środowiska obliczeniowego, asynchronicznego API i integracji zewnętrznych. |
+| **FastAPI** | `>= 0.111.0` | Asynchroniczny framework REST API zgodny ze standardem ASGI; automatyczne generowanie interaktywnej dokumentacji Swagger UI / OpenAPI i wstrzykiwanie zależności (`Depends`). |
+| **Uvicorn** | `>= 0.30.0` | Produkcyjny serwer ASGI wspierany pętlą zdarzeń `uvloop` oraz parserem protokołów `httptools`. |
+| **Pydantic V2** | `>= 2.7.0` | Ścisła walidacja i serializacja danych z silnikiem `pydantic-core` napisanym w Rust; gwarancja spójności schematów telemetrii, konfiguracji symulacji i raportów kalibracji. |
+| **NumPy** | `>= 1.26.0` | Zwektoryzowane operacje macierzowe, trygonometria wektorów wiatru pozornego oraz dyskretyzacja przestrzenna trasy $dx = 5\text{ m}$. |
+| **SciPy** | `>= 1.12.0` | Aparat naukowo-optymalizacyjny: solwer `scipy.optimize.lsq_linear` z regularyzacją bayesowską (auto-kalibracja $CdA, Crr, \eta$), bezgradientowa minimalizacja Powell / Nelder-Mead (metoda Chunga) oraz filtr wygładzający Savitzky'ego-Golaya (`scipy.signal.savgol_filter`). |
+| **Polars** | `>= 1.0.0` | Błyskawiczna biblioteka DataFrame w Rust wykorzystująca przetwarzanie wielowątkowe i architekturę pamięci Apache Arrow do operacji na seriach czasowych. |
+| **fitdecode** | `>= 0.11.0` | Niskopoziomowy parser binarnego formatu Garmin/ANT+ FIT (`.fit`) do strumieniowej deserializacji rekordów 1 Hz bez zbędnego narzutu pamięciowego. |
+| **HTTPX** | `>= 0.27.0` | W pełni asynchroniczny klient HTTP z obsługą HTTP/2, poolingiem połączeń i konfigurowalnymi timeoutami dla kaskadowego pobierania pogody oraz integracji Stravy. |
+| **SQLite3** | Wbudowane | Lekka baza relacyjna (`strava.db`) przechowująca bezpiecznie tokeny OAuth 2.0 (nigdy nieprzekazywane do przeglądarki) oraz 2-poziomowy cache strumieni telemetrycznych. |
+
+### 10.2. Frontend & Interfejs Użytkownika (TypeScript / React)
+
+| Technologia / Biblioteka | Wersja | Rola w architekturze i kluczowe zastosowanie |
+| :--- | :--- | :--- |
+| **React** | `18.3.1` | Deklaratywny silnik UI; wykorzystanie Concurrent Mode, kompozycji komponentów funkcyjnych oraz memoizacji obliczeń (`useMemo`, `useCallback`). |
+| **TypeScript** | `5.4.5` | Statyczna kontrola typów w całej aplikacji klienckiej, gwarantująca pełną zgodność kontraktów z modelami Pydantic na backendzie. |
+| **Vite** | `5.3.1` | Narzędzie budujące nowej generacji oparte na Rollup i esbuild; natychmiastowe odświeżanie modułów HMR i zoptymalizowany bundling produkcyjny. |
+| **Tailwind CSS** | `3.4.4` | Silnik stylów CSS utility-first z kompilatorem JIT; pełna responsywność (RWD) oraz bezproblemowa obsługa motywów Dark / Light (`darkMode: 'class'`). |
+| **Apache ECharts** | `5.5.0` | Silnik grafiki wektorowej/Canvas (`echarts-for-react 3.0.2`); zsynchronizowane dwupoziomowe wykresy profilu wysokości, prędkości, mocy i delty czasu z interaktywnym kursorem i zoomem. |
+| **Leaflet** | `1.9.4` | Biblioteka GIS (`react-leaflet 4.2.1`) do interaktywnej prezentacji trasy GPS z segmentacją polilinii według wektorów wiatru pozornego. |
+| **Lucide React** | `0.395.0` | Zestaw wektorowych ikon interfejsu (róża wiatrów, metryki, nawigacja). |
+
+### 10.3. Zewnętrzne API i Źródła Meteorologiczne
+
+- **Open-Meteo ERA5 Reanalysis & Forecast API:** Globalna reanaliza atmosferyczna ERA5 i numeryczne prognozy o wysokiej rozdzielczości (prędkość i azymut wiatru na $10\text{ m}$, porywy, temperatura, ciśnienie, wilgotność).
+- **DWD Bright Sky API:** Bezpośrednie pobieranie danych ze stacji Deutscher Wetterdienst (niemiecka służba meteorologiczna) jako 1. poziom fallbacku.
+- **MET Norway Frost API:** Oficjalne norweskie dane meteorologiczne jako 2. poziom fallbacku.
+- **Model Deterministyczny ISA:** Międzynarodowa Atmosfera Wzorcowa (International Standard Atmosphere) jako fizyczny fallback gęstości powietrza na wysokości n.p.m.
+- **Strava API v3:** Pełny protokół autoryzacji OAuth 2.0 (Authorization Code Flow) oraz strumieniowy odczyt telemetrii 1 Hz (`/activities/{id}/streams`).
+
+### 10.4. Narzędzia Testowe, CI/CD i Infrastruktura
+
+- **pytest & pytest-asyncio (`>= 8.2.0`, `>= 0.23.0`):** Automatyczny pakiet testów jednostkowych i asynchronicznych integracji modeli fizycznych i endpointów.
+- **respx (`>= 0.21.0`):** Mockowanie zapytań HTTP na potrzeby deterministycznych testów odporności na awarie API pogodowych i Stravy.
+- **GitHub Actions:** Zautomatyzowany potok CI/CD budujący aplikację kliencką i publikujący statyczny build na **GitHub Pages**.
+- **Render Cloud:** Hosting chmurowy asynchronicznej usługi backendowej FastAPI w środowisku produkcyjnym pod adresem `https://bikespeedsimulation.onrender.com`.
+
+---
+
+## 11. Struktura repozytorium
 
 ```
 BikeSpeedSimulation/
@@ -482,14 +531,14 @@ BikeSpeedSimulation/
 
 ---
 
-## 11. Uruchomienie lokalne i testy
+## 12. Uruchomienie lokalne i testy
 
-### 11.1. Wymagania wstępne
+### 12.1. Wymagania wstępne
 
-- Python 3.11 lub 3.12
+- Python 3.12+
 - Node.js 18+ oraz npm
 
-### 11.2. Uruchomienie backendu
+### 12.2. Uruchomienie backendu
 
 ```bash
 cd backend
@@ -513,7 +562,7 @@ Uruchomienie pełnego pakietu 76 testów jednostkowych i integracyjnych:
 pytest backend/tests
 ```
 
-### 11.3. Uruchomienie frontendu
+### 12.3. Uruchomienie frontendu
 
 ```bash
 cd frontend
